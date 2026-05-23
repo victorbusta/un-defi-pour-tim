@@ -65,6 +65,11 @@ add_action('acf/init', function () {
 require get_template_directory() . '/inc/ajax.php';
 
 /* ============================================================
+   SHORTCODES (for Elementor Shortcode widget)
+   ============================================================ */
+require get_template_directory() . '/inc/shortcodes.php';
+
+/* ============================================================
    HELPERS
    ============================================================ */
 
