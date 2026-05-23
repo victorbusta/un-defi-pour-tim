@@ -1,0 +1,40 @@
+name: Provision server (run once)
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: 'Production domain (e.g. un-defi-pour-tim.com)'
+        required: true
+        default: 'un-defi-pour-tim.com'
+      wp_admin_email:
+        description: 'WordPress admin email'
+        required: true
+
+jobs:
+  provision:
+    name: Install Nginx · PHP · MySQL · WordPress
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload provision script
+        run: |
+          scp scripts/provision.sh \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/provision.sh"
+
+      - name: Run provision
+        run: |
+          ssh "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            "DOMAIN=${{ github.event.inputs.domain }} \
+             WP_ADMIN_EMAIL=${{ github.event.inputs.wp_admin_email }} \
+             bash /tmp/provision.sh"

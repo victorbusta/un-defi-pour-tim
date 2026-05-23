@@ -1,0 +1,22 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# WordPress — do not commit WP core or uploads
+wp-config.php
+wp-content/uploads/
+wp-content/cache/
+
+# Sensitive
+.env
+*.env.local
+secrets/
+
+# Composer
+vendor/
