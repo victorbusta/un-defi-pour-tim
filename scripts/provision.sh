@@ -84,6 +84,14 @@ server {
     root ${WP_ROOT};
     index index.php;
 
+    location = /favicon.ico { log_not_found off; access_log off; try_files \$uri =204; }
+    location = /robots.txt  { log_not_found off; access_log off; try_files \$uri =204; }
+    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot|webp)\$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files \$uri =404;
+    }
+
     location / {
         try_files \$uri \$uri/ /index.php?\$args;
     }
