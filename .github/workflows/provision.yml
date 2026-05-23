@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       domain:
-        description: 'Production domain (e.g. un-defi-pour-tim.com)'
+        description: 'Production domain (e.g. undefipourtim.com)'
         required: true
-        default: 'un-defi-pour-tim.com'
+        default: 'undefipourtim.com'
       wp_admin_email:
         description: 'WordPress admin email'
         required: true

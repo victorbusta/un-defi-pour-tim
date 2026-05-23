@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Défi Tim — HelloAsso
- * Plugin URI:  https://un-defi-pour-tim.com
+ * Plugin URI:  https://undefipourtim.com
  * Description: HelloAsso checkout integration for Un Défi pour Tim. Configure API keys in Settings → HelloAsso.
  * Version:     1.0.0
  * Author:      Un Défi pour Tim

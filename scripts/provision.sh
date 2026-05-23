@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# Server provisioning script for un-defi-pour-tim.com
+# Server provisioning script for undefipourtim.com
 # Ubuntu 24.04, Hetzner Cloud CX22
 # Run once via GitHub Actions workflow_dispatch or directly as root.
 #
 # Required env vars:
-#   DOMAIN           e.g. un-defi-pour-tim.com
-#   WP_ADMIN_EMAIL   e.g. admin@un-defi-pour-tim.com
+#   DOMAIN           e.g. undefipourtim.com
+#   WP_ADMIN_EMAIL   e.g. admin@undefipourtim.com
 #
 # Optional (generated if not set):
 #   WP_ADMIN_PASS    (random if unset — printed at end)
 #   WP_DB_PASS       (random if unset)
 set -euo pipefail
 
-DOMAIN="${DOMAIN:-un-defi-pour-tim.com}"
+DOMAIN="${DOMAIN:-undefipourtim.com}"
 WP_ADMIN_EMAIL="${WP_ADMIN_EMAIL:-admin@${DOMAIN}}"
 WP_DB_NAME="wordpress"
 WP_DB_USER="wpuser"
