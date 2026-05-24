@@ -150,6 +150,10 @@ function w_img(string $note): array {
     );
 }
 
+function w_html(string $html): array {
+    return el_widget('html', ['html' => $html]);
+}
+
 function w_progress(int $pct, string $label): array {
     return el_widget('progress', [
         'title'              => $label,
@@ -654,7 +658,31 @@ $page[] = el_section(NAVY, '80', [
             ], ['content_position' => 'top']),
             el_col(50, [
                 w_text('<p style="font-family:Inter;font-weight:600;font-size:16px;color:' . WHITE . ';margin:0 0 20px">Envoyez-nous un message</p>', WHITE, 16),
-                el_widget('shortcode', ['shortcode' => '[defitim_contact]']),
+                w_html('<form class="contact-form" id="contact-form" novalidate>
+  <div class="cf-row">
+    <label>
+      <span>Nom</span>
+      <input type="text" name="nom" required placeholder="Votre nom">
+    </label>
+    <label>
+      <span>Email</span>
+      <input type="email" name="email" required placeholder="votre@email.fr">
+    </label>
+  </div>
+  <label class="cf-full">
+    <span>Sujet</span>
+    <input type="text" name="sujet" value="Mécénat — Un défi pour Tim" required>
+  </label>
+  <label class="cf-full">
+    <span>Message</span>
+    <textarea name="message" rows="5" required placeholder="Votre message…"></textarea>
+  </label>
+  <div class="cf-feedback" role="alert" aria-live="polite" hidden></div>
+  <button class="btn btn-primary btn-lg" type="submit">
+    Envoyer
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" style="width:18px;height:18px;vertical-align:middle;margin-left:6px"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+  </button>
+</form>'),
             ], [
                 'content_position' => 'top',
                 'padding' => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '0', 'left' => '40', 'isLinked' => false],
