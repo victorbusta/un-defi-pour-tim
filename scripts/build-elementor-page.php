@@ -724,10 +724,13 @@ update_post_meta($front_page_id, '_elementor_data',          $json);
 update_post_meta($front_page_id, '_elementor_edit_mode',     'builder');
 update_post_meta($front_page_id, '_elementor_template_type', 'wp-page');
 update_post_meta($front_page_id, '_wp_page_template',        'elementor_canvas');
-delete_post_meta($front_page_id, '_elementor_css');
 
-if (class_exists('\Elementor\Plugin')) {
-    \Elementor\Plugin::$instance->files_manager->clear_cache();
+// Delete only the front page CSS — never clear_cache() globally, it nukes the Kit CSS
+// and Elementor 4.x crashes when regenerating Kit CSS if _elementor_page_settings is
+// stored as a JSON string (as it is by default) instead of a PHP-serialized array.
+if (class_exists('\Elementor\Core\Files\CSS\Post')) {
+    $post_css = new \Elementor\Core\Files\CSS\Post($front_page_id);
+    $post_css->delete();
 }
 
 WP_CLI::success(sprintf('Page built: %d sections · %d bytes of JSON', count($page), strlen($json)));
