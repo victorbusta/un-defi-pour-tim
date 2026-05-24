@@ -5,7 +5,7 @@ defined('ABSPATH') || exit;
    THEME SETUP
    ============================================================ */
 function defitim_setup() {
-    load_theme_textdomain('defitim', get_template_directory() . '/languages');
+    load_theme_textdomain('defitim', get_stylesheet_directory() . '/languages');
     add_theme_support('title-tag');
     add_theme_support('post-thumbnails');
     add_theme_support('html5', ['search-form','comment-form','comment-list','gallery','caption','style','script']);
@@ -26,10 +26,10 @@ function defitim_assets() {
         'https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap',
         [], null);
     wp_enqueue_style('defitim-main',
-        get_template_directory_uri() . '/assets/css/main.css', ['defitim-fonts'], $v);
+        get_stylesheet_directory_uri() . '/assets/css/main.css', ['defitim-fonts'], $v);
 
     wp_enqueue_script('defitim-main',
-        get_template_directory_uri() . '/assets/js/main.js',
+        get_stylesheet_directory_uri() . '/assets/js/main.js',
         [], $v, true);
 
     // Pass data to JS
@@ -49,25 +49,25 @@ add_action('wp_enqueue_scripts', 'defitim_assets');
 /* ============================================================
    CUSTOM POST TYPE: DEFI
    ============================================================ */
-require get_template_directory() . '/inc/post-types.php';
+require get_stylesheet_directory() . '/inc/post-types.php';
 
 /* ============================================================
    ACF FIELDS (registered in PHP — version-controlled)
    ============================================================ */
 add_action('acf/init', function () {
     if (!function_exists('acf_add_local_field_group')) return;
-    require get_template_directory() . '/inc/acf-fields.php';
+    require get_stylesheet_directory() . '/inc/acf-fields.php';
 });
 
 /* ============================================================
    AJAX: CONTACT FORM
    ============================================================ */
-require get_template_directory() . '/inc/ajax.php';
+require get_stylesheet_directory() . '/inc/ajax.php';
 
 /* ============================================================
    SHORTCODES (for Elementor Shortcode widget)
    ============================================================ */
-require get_template_directory() . '/inc/shortcodes.php';
+require get_stylesheet_directory() . '/inc/shortcodes.php';
 
 /* ============================================================
    HELPERS
