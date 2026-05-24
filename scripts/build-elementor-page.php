@@ -720,7 +720,9 @@ if (!$front_page_id) {
 }
 
 $json = wp_json_encode($page);
-update_post_meta($front_page_id, '_elementor_data',          $json);
+// wp_unslash() strips backslashes when storing meta — wp_slash() pre-doubles them so the
+// JSON's \" sequences survive and json_decode() can read it back correctly.
+update_post_meta($front_page_id, '_elementor_data', wp_slash($json));
 update_post_meta($front_page_id, '_elementor_edit_mode',     'builder');
 update_post_meta($front_page_id, '_elementor_template_type', 'wp-page');
 update_post_meta($front_page_id, '_wp_page_template',        'elementor_canvas');
