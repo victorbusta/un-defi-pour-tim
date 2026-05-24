@@ -488,3 +488,11 @@ img,svg { display: block; max-width: 100%; }
 /* ── WordPress admin bar offset ── */
 .admin-bar .topbar { top: 32px; }
 @media screen and (max-width: 782px) { .admin-bar .topbar { top: 46px; } }
+
+/* ── Elementor: lift 1140px container constraint on our stretched wrapper sections.
+   Each section wraps one HTML widget whose inner markup handles its own max-width
+   via .section-inner / .hero-inner / etc. The Elementor container must be unconstrained
+   so backgrounds fill the full viewport. ── */
+.elementor-section-stretched.elementor-section-boxed > .elementor-container {
+  max-width: none;
+}

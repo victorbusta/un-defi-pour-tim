@@ -1,20 +1,20 @@
 <?php
 /**
- * Elementor page builder — Un Défi pour Tim
- * ALL sections use real Elementor widgets. No shortcodes except the contact form.
- * Everything is click-to-edit in Elementor.
+ * Build Elementor front page — original design, pixel-perfect.
  *
- * Run: wp eval-file .../build-elementor-page.php --path=/var/www/html --allow-root
+ * Strategy:
+ *   - Static sections → w_html() widgets with exact HTML from PHP templates.
+ *     CSS classes from main.css apply directly → pixel-perfect match.
+ *     Editable in Elementor by clicking the HTML widget and editing content.
+ *   - Dynamic sections (défis, progress, sponsors, faq) → w_sc() shortcode widgets.
+ *     Content managed via WordPress admin → appears live in Elementor editor.
+ *
+ * Run: wp eval-file themes/defitim/scripts/build-elementor-page.php --path=/var/www/html --allow-root
  */
-
-define('NAVY',  '#0B1B3D');
-define('RED',   '#E63329');
-define('CREAM', '#F4EFE6');
-define('BRASS', '#C8965A');
-define('WHITE', '#FFFFFF');
+defined('ABSPATH') || exit;
 
 $_used_ids = [];
-function uid() {
+function uid(): string {
     global $_used_ids;
     $c = 'abcdefghijklmnopqrstuvwxyz0123456789';
     do { $id = ''; for ($i = 0; $i < 7; $i++) $id .= $c[random_int(0, 35)]; }
@@ -23,717 +23,448 @@ function uid() {
     return $id;
 }
 
-function el_section(string $bg, string $pv, array $cols, array $extra = []): array {
-    return array_merge([
-        'id'       => uid(),
-        'elType'   => 'section',
-        'isInner'  => false,
-        'settings' => array_merge([
-            'stretch_section'       => 'section-stretched',
-            'content_width'         => ['unit' => 'px', 'size' => 1200],
-            'gap'                   => 'no',
-            'background_background' => 'classic',
-            'background_color'      => $bg,
-            'padding'               => ['unit' => 'px', 'top' => $pv, 'right' => '0', 'bottom' => $pv, 'left' => '0', 'isLinked' => false],
-        ], $extra),
-        'elements' => $cols,
-    ]);
+// Full-width transparent Elementor section.
+// layout=full_width → adds elementor-section-full_width, removes max-width from container.
+// stretch_section → section goes edge-to-edge.
+function el_wrap(array $widgets): array {
+    return [
+        'id' => uid(), 'elType' => 'section', 'isInner' => false,
+        'settings' => [
+            'stretch_section' => 'section-stretched',
+            'layout'          => 'full_width',
+            'gap'             => 'no',
+            'padding'         => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '0', 'left' => '0', 'isLinked' => true],
+        ],
+        'elements' => [[
+            'id' => uid(), 'elType' => 'column', 'isInner' => false,
+            'settings' => [
+                '_column_size' => 100,
+                'padding'      => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '0', 'left' => '0', 'isLinked' => true],
+            ],
+            'elements' => $widgets,
+        ]],
+    ];
 }
 
-function el_inner(array $cols, array $extra = []): array {
-    return array_merge([
-        'id'       => uid(),
-        'elType'   => 'section',
-        'isInner'  => true,
-        'settings' => array_merge([
-            'gap'     => 'no',
-            'padding' => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '0', 'left' => '0', 'isLinked' => true],
-        ], $extra),
-        'elements' => $cols,
-    ]);
-}
-
-function el_col(int $pct, array $widgets, array $extra = []): array {
-    return array_merge([
-        'id'       => uid(),
-        'elType'   => 'column',
-        'isInner'  => false,
-        'settings' => array_merge(['_column_size' => $pct, 'content_position' => 'middle'], $extra),
-        'elements' => $widgets,
-    ]);
-}
-
-function el_widget(string $type, array $cfg): array {
-    return ['id' => uid(), 'elType' => 'widget', 'widgetType' => $type, 'settings' => $cfg, 'elements' => []];
-}
-
-function w_heading(string $text, string $tag, string $color, int $px, float $lh = 1.1): array {
-    return el_widget('heading', [
-        'title'                  => $text,
-        'header_size'            => $tag,
-        'title_color'            => $color,
-        'typography_typography'  => 'custom',
-        'typography_font_family' => 'Archivo Black',
-        'typography_font_weight' => '400',
-        'typography_font_size'   => ['unit' => 'px', 'size' => $px, 'sizes' => []],
-        'typography_line_height' => ['unit' => 'em', 'size' => $lh, 'sizes' => []],
-    ]);
-}
-
-function w_text(string $html, string $color = NAVY, int $px = 18): array {
-    return el_widget('text-editor', [
-        'editor'                  => $html,
-        'text_color'              => $color,
-        'typography_typography'   => 'custom',
-        'typography_font_family'  => 'Inter',
-        'typography_font_weight'  => '400',
-        'typography_font_size'    => ['unit' => 'px', 'size' => $px, 'sizes' => []],
-        'typography_line_height'  => ['unit' => 'em', 'size' => 1.6, 'sizes' => []],
-    ]);
-}
-
-function w_kicker(string $text, string $color = BRASS): array {
-    return w_text(
-        '<p style="font-family:Inter;font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:2px;color:' . $color . '">' . $text . '</p>',
-        $color, 12
-    );
-}
-
-function w_spacer(int $px): array {
-    return el_widget('spacer', ['space' => ['unit' => 'px', 'size' => $px, 'sizes' => []]]);
-}
-
-function w_button(string $label, string $url, string $bg = RED, string $size = 'md', string $align = 'left'): array {
-    return el_widget('button', [
-        'text'                      => $label,
-        'link'                      => ['url' => $url, 'is_external' => '', 'nofollow' => ''],
-        'size'                      => $size,
-        'align'                     => $align,
-        'button_background_color'   => $bg,
-        'button_text_color'         => WHITE,
-        'border_radius'             => ['unit' => 'px', 'top' => 4, 'right' => 4, 'bottom' => 4, 'left' => 4, 'isLinked' => true],
-        'typography_typography'     => 'custom',
-        'typography_font_family'    => 'Inter',
-        'typography_font_weight'    => '700',
-        'typography_font_size'      => ['unit' => 'px', 'size' => 13, 'sizes' => []],
-        'typography_letter_spacing' => ['unit' => 'px', 'size' => 1, 'sizes' => []],
-        'typography_text_transform' => 'uppercase',
-    ]);
-}
-
-function w_counter(int $end, string $label, string $suffix = '', string $prefix = '', string $numColor = RED, string $lblColor = NAVY): array {
-    return el_widget('counter', [
-        'starting_number'                => 0,
-        'ending_number'                  => $end,
-        'suffix'                         => $suffix,
-        'prefix'                         => $prefix,
-        'title'                          => $label,
-        'number_color'                   => $numColor,
-        'title_color'                    => $lblColor,
-        'typography_typography'          => 'custom',
-        'typography_font_family'         => 'Archivo Black',
-        'typography_font_weight'         => '400',
-        'typography_font_size'           => ['unit' => 'px', 'size' => 40, 'sizes' => []],
-        'title_typography_typography'    => 'custom',
-        'title_typography_font_family'   => 'Inter',
-        'title_typography_font_size'     => ['unit' => 'px', 'size' => 12, 'sizes' => []],
-        'title_typography_font_weight'   => '500',
-        'title_typography_text_transform'=> 'uppercase',
-        'title_typography_letter_spacing'=> ['unit' => 'px', 'size' => 1, 'sizes' => []],
-    ]);
-}
-
-function w_img(string $note): array {
-    return w_text(
-        '<p style="text-align:center;padding:48px 24px;background:rgba(200,150,90,0.08);border:2px dashed ' . BRASS . ';border-radius:8px;color:' . BRASS . ';font-family:monospace;font-size:13px;line-height:1.6">' . $note . '</p>',
-        BRASS, 13
-    );
-}
-
+// HTML widget — renders raw HTML; click-to-edit in Elementor editor
 function w_html(string $html): array {
-    return el_widget('html', ['html' => $html]);
+    return ['id' => uid(), 'elType' => 'widget', 'widgetType' => 'html', 'settings' => ['html' => $html], 'elements' => []];
 }
 
-function w_progress(int $pct, string $label): array {
-    return el_widget('progress', [
-        'title'              => $label,
-        'percent'            => ['unit' => '%', 'size' => $pct, 'sizes' => []],
-        'color'              => WHITE,
-        'bar_color'          => RED,
-        'bar_bg_color'       => 'rgba(255,255,255,0.15)',
-        'display_percentage' => 'show',
-        'typography_typography'  => 'custom',
-        'typography_font_family' => 'Inter',
-        'typography_font_weight' => '600',
-        'typography_font_size'   => ['unit' => 'px', 'size' => 13, 'sizes' => []],
-    ]);
+// Shortcode widget — renders dynamic PHP section; content managed via WP admin
+function w_sc(string $code): array {
+    return ['id' => uid(), 'elType' => 'widget', 'widgetType' => 'shortcode', 'settings' => ['shortcode' => $code], 'elements' => []];
 }
 
-function w_accordion(array $items, string $titleColor = NAVY, string $contentColor = NAVY): array {
-    $tabs = [];
-    foreach ($items as [$q, $a]) {
-        $tabs[] = ['_id' => uid(), 'tab_title' => $q, 'tab_content' => $a];
-    }
-    return el_widget('accordion', [
-        'tabs'                            => $tabs,
-        'title_color'                     => $titleColor,
-        'icon_color'                      => RED,
-        'border_color'                    => 'rgba(11,27,61,0.12)',
-        'title_typography_typography'     => 'custom',
-        'title_typography_font_family'    => 'Inter',
-        'title_typography_font_weight'    => '600',
-        'title_typography_font_size'      => ['unit' => 'px', 'size' => 16, 'sizes' => []],
-        'content_color'                   => $contentColor,
-        'content_typography_typography'   => 'custom',
-        'content_typography_font_family'  => 'Inter',
-        'content_typography_font_size'    => ['unit' => 'px', 'size' => 15, 'sizes' => []],
-        'content_typography_line_height'  => ['unit' => 'em', 'size' => 1.6, 'sizes' => []],
-    ]);
-}
+$arrow = '<svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>';
 
-// ─── Build page ───────────────────────────────────────────────────────────────
-$menu_obj = wp_get_nav_menu_object('Navigation principale');
-$menu_id  = $menu_obj ? (int) $menu_obj->term_id : 0;
+// ─────────────────────────────────────────────────────────
+//  BUILD PAGE
+// ─────────────────────────────────────────────────────────
 $page = [];
 
 // ════════════════════════════════════════════════════════
-// NAV
+// 0 — NAV
 // ════════════════════════════════════════════════════════
-$page[] = el_section(NAVY, '14', [
-    el_col(18, [
-        w_heading('Un Défi<br>pour <span style="color:' . RED . '">Tim</span>', 'div', WHITE, 13, 1.15),
-    ], ['content_position' => 'middle']),
-    el_col(64, [
-        el_widget('nav-menu', [
-            'menu'                                => $menu_id,
-            'layout'                              => 'horizontal',
-            'pointer'                             => 'none',
-            'style_color'                         => WHITE,
-            'style_color_hover'                   => RED,
-            'style_typography_typography'         => 'custom',
-            'style_typography_font_family'        => 'Inter',
-            'style_typography_font_size'          => ['unit' => 'px', 'size' => 12, 'sizes' => []],
-            'style_typography_font_weight'        => '500',
-            'style_typography_text_transform'     => 'uppercase',
-            'style_typography_letter_spacing'     => ['unit' => 'px', 'size' => 1, 'sizes' => []],
-        ]),
-    ], ['content_position' => 'middle']),
-    el_col(18, [
-        w_button('Faire un don', '#help', RED, 'sm', 'right'),
-    ], ['content_position' => 'middle']),
-], [
-    '_position'   => 'fixed',
-    'z_index'     => 999,
-    'css_classes' => 'dt-topbar',
-    'padding'     => ['unit' => 'px', 'top' => '14', 'right' => '24', 'bottom' => '14', 'left' => '24', 'isLinked' => false],
-]);
+$page[] = el_wrap([w_html(
+    '<header class="topbar" role="banner">' .
+    '<div class="topbar-inner">' .
+    '<a href="/" class="brand">' .
+    '<span class="brand-mark" aria-hidden="true"><span class="brand-mark-bar"></span><span class="brand-mark-bar"></span><span class="brand-mark-bar"></span></span>' .
+    '<span class="brand-text"><span class="brand-defi">DÉFI</span><span class="brand-tim">TIM</span></span>' .
+    '</a>' .
+    '<nav class="nav" aria-label="Navigation principale">' .
+    '<a href="#story">L\'Histoire</a>' .
+    '<a href="#defis">Les Défis</a>' .
+    '<a href="#members">Membres</a>' .
+    '<a href="#mecenat">Mécénat</a>' .
+    '<a href="#faq">FAQ</a>' .
+    '<a href="#contact">Contact</a>' .
+    '</nav>' .
+    '<div class="topbar-right">' .
+    '<div class="lang-switch" role="group" aria-label="Language"><span class="lang-btn active">FR</span></div>' .
+    '<a href="#help" class="btn btn-primary btn-sm">Faire un don ' . $arrow . '</a>' .
+    '<button class="nav-toggle" aria-label="Menu" aria-expanded="false" aria-controls="nav-mobile"><span></span><span></span><span></span></button>' .
+    '</div>' .
+    '</div>' .
+    '<nav class="nav-mobile" id="nav-mobile" aria-label="Menu mobile" hidden>' .
+    '<a href="#story">L\'Histoire</a>' .
+    '<a href="#defis">Les Défis</a>' .
+    '<a href="#members">Membres</a>' .
+    '<a href="#mecenat">Mécénat</a>' .
+    '<a href="#faq">FAQ</a>' .
+    '<a href="#contact">Contact</a>' .
+    '<a href="#help" class="btn btn-primary">Faire un don</a>' .
+    '</nav>' .
+    '</header>'
+)]);
 
 // ════════════════════════════════════════════════════════
-// HERO
+// 1 — HERO
 // ════════════════════════════════════════════════════════
-$page[] = el_section(CREAM, '100', [
-    el_col(55, [
-        w_spacer(60),
-        w_kicker('Marathon de l\'Espace · Kourou · 29 mars 2026'),
-        w_spacer(8),
-        w_heading('Un Défi<br>pour <span style="color:' . RED . '">Tim</span>', 'h1', NAVY, 72, 0.95),
-        w_spacer(24),
-        w_text('<p>Corporal Timothé Bernardeau, sapeur-pompier de Paris, a subi un grave traumatisme lors d\'une démonstration de gymnastique pour des enfants malades. Ses frères d\'armes relèvent des défis sportifs pour lui témoigner leur fraternité et soutenir son accompagnement.</p>', NAVY),
-        w_spacer(40),
-        el_inner([
-            el_col(25, [w_counter(4,     'Défis organisés')]),
-            el_col(25, [w_counter(26,    'Participants')]),
-            el_col(25, [w_counter(42780, 'À collecter', ' €')]),
-            el_col(25, [
-                w_heading('29.03.26', 'h3', RED, 36, 1.0),
-                w_text('<p style="font-family:Inter;font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:' . NAVY . ';margin-top:4px">Jour J</p>', NAVY, 12),
-            ]),
-        ]),
-        w_spacer(40),
-        el_inner([
-            el_col(50, [w_button('Soutenir les défis', '#help', RED, 'lg')]),
-            el_col(50, [w_button('Lire son histoire', '#story', NAVY, 'lg', 'left')]),
-        ]),
-    ], [
-        'content_position' => 'top',
-        'padding' => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '0', 'left' => '48', 'isLinked' => false],
-    ]),
-    el_col(45, [
-        w_img('Portrait de Tim<br>→ Cliquer sur ce bloc dans Elementor<br>→ Remplacer par la photo via la médiathèque'),
-    ], ['content_position' => 'middle']),
-], ['_element_id' => 'hero']);
+$ticker_chunk = '<span>Brigade de Sapeurs-Pompiers de Paris <span class="ticker-dot">●</span> Sport · Culture · Solidarité <span class="ticker-dot">●</span> Depuis 2018 <span class="ticker-dot">●</span></span>';
+$ticker_track = str_repeat($ticker_chunk, 8);
+
+$page[] = el_wrap([w_html(
+    '<section class="hero" id="hero">' .
+
+    // Ticker
+    '<div class="ticker ticker-top" aria-hidden="true"><div class="ticker-track">' . $ticker_track . '</div></div>' .
+
+    // Hero inner
+    '<div class="hero-inner">' .
+
+    // Left
+    '<div class="hero-left">' .
+    '<div class="kicker"><span class="kicker-dot" style="background:var(--accent)"></span><span>Le collectif · Depuis 2018</span></div>' .
+    '<h1 class="hero-title">' .
+    '<span class="hero-line">On ne lâche</span>' .
+    '<span class="hero-line">pas Tim.</span>' .
+    '<span class="hero-line"><span class="hero-mark">Jamais.</span></span>' .
+    '</h1>' .
+    '<p class="hero-lede">Un Défi pour Tim, c\'est un collectif qui organise toute l\'année des défis sportifs et culturels autour du caporal Timothé Bernardeau, ancien sapeur-pompier de Paris devenu tétraplégique en service.</p>' .
+    '<div class="hero-ctas">' .
+    '<a href="#help" class="btn btn-primary btn-lg">Soutenir les défis ' . $arrow . '</a>' .
+    '<a href="#story" class="btn btn-ghost btn-lg">Lire son histoire</a>' .
+    '</div>' .
+    '<div class="hero-meta">' .
+    '<div class="hero-meta-chip"><span class="hero-meta-sq"></span> Brigade de Sapeurs-Pompiers de Paris</div>' .
+    '<div class="hero-meta-chip"><span class="hero-meta-sq hero-meta-sq-r"></span> Sport · Culture · Solidarité</div>' .
+    '<div class="hero-meta-chip"><span class="hero-meta-sq hero-meta-sq-b"></span> Depuis 2018</div>' .
+    '</div>' .
+    '</div>' . // .hero-left
+
+    // Right
+    '<div class="hero-right">' .
+    '<div class="hero-photo-frame">' .
+    '<div class="hero-photo-tag">PORTRAIT · TIM</div>' .
+    '<div class="hero-photo-placeholder" aria-label="Portrait du Caporal Timothé Bernardeau"></div>' .
+    '<div class="hero-photo-badge"><div class="hero-photo-badge-n">29.03</div><div class="hero-photo-badge-l">KOUROU 2026</div></div>' .
+    '</div>' .
+    '<div class="hero-photo-meta">' .
+    '<div class="hero-meta-stripe"></div>' .
+    '<div class="hero-meta-stripe hero-meta-stripe-r"></div>' .
+    '<div class="hero-meta-stripe"></div>' .
+    '</div>' .
+    '</div>' . // .hero-right
+
+    '</div>' . // .hero-inner
+
+    // Stats strip
+    '<div class="stats-strip" aria-label="Chiffres clés">' .
+    '<div class="stat"><div class="stat-n">4</div><div class="stat-l">Défis organisés</div></div>' .
+    '<div class="stat"><div class="stat-n">120+</div><div class="stat-l">Frères d\'armes mobilisés</div></div>' .
+    '<div class="stat"><div class="stat-n">38 K€</div><div class="stat-l">Collectés à ce jour</div></div>' .
+    '<div class="stat"><div class="stat-n">29.03.26</div><div class="stat-l">Prochain défi · Kourou</div></div>' .
+    '</div>' .
+
+    '</section>'
+)]);
 
 // ════════════════════════════════════════════════════════
-// STORY
+// 2 — STORY
 // ════════════════════════════════════════════════════════
-$page[] = el_section(CREAM, '80', [
-    el_col(50, [
-        w_kicker('Son histoire'),
-        w_spacer(16),
-        w_heading('Timothé Bernardeau.', 'h2', NAVY, 40),
-        w_spacer(24),
-        w_text('<p>Né à Nantes, Timothé rejoint la Brigade de Sapeurs-Pompiers de Paris en septembre 2012. Il intègre la 11<sup>e</sup> compagnie du Marais (4<sup>e</sup> arrondissement) comme conducteur de machine. Présent lors des attentats du 13 novembre 2015, il reçoit de nombreuses citations de ses commandants.</p>', NAVY),
-        w_spacer(16),
-        w_text('<p>En avril 2015, il rejoint le groupe de gymnastique d\'élite de la BSPP — fondé en 1919 — une équipe acrobatique et artistique qui se produit dans plus de 40 spectacles à travers la France et l\'Europe. Avant son accident, il avait couru le Marathon de New York.</p>', NAVY),
-        w_spacer(16),
-        w_text('<p>En mai 2018, lors d\'une démonstration de gymnastique pour des enfants malades, il subit un grave traumatisme médullaire : <strong>tétraplégie</strong>. Après 2,5 ans à l\'Institution Nationale des Invalides, il vit aujourd\'hui à domicile avec sa compagne infirmière et leur fille Lyla.</p>', NAVY),
-        w_spacer(24),
-        w_text('<blockquote style="border-left:3px solid ' . RED . ';padding-left:20px;margin:0"><p style="font-family:Archivo Black;font-size:20px;color:' . BRASS . ';line-height:1.3">« La solidarité transforme ce qui semblait impossible en aventure collective. »</p></blockquote>', BRASS),
-    ], [
-        'content_position' => 'top',
-        'padding' => ['unit' => 'px', 'top' => '0', 'right' => '48', 'bottom' => '0', 'left' => '48', 'isLinked' => false],
-    ]),
-    el_col(50, [
-        w_img('Photo principale de Tim<br>→ Remplacer via la médiathèque'),
-        w_spacer(24),
-        w_img('Photo secondaire — équipe / caserne<br>→ Remplacer via la médiathèque'),
-    ], [
-        'content_position' => 'top',
-        'padding' => ['unit' => 'px', 'top' => '0', 'right' => '24', 'bottom' => '0', 'left' => '24', 'isLinked' => false],
-    ]),
-], ['_element_id' => 'story']);
+$timeline_rows =
+    '<div class="timeline-row"><div class="timeline-y">2012</div><div class="timeline-bar" aria-hidden="true"></div><div class="timeline-e">Incorpore la BSPP, 11e compagnie d\'incendie, Marais.</div></div>' .
+    '<div class="timeline-row"><div class="timeline-y">2015</div><div class="timeline-bar" aria-hidden="true"></div><div class="timeline-e">Rejoint le groupe de gymnastique de la Brigade.</div></div>' .
+    '<div class="timeline-row"><div class="timeline-y">2018</div><div class="timeline-bar" aria-hidden="true"></div><div class="timeline-e">Chute en représentation. Tétraplégie.</div></div>' .
+    '<div class="timeline-row"><div class="timeline-y">2023</div><div class="timeline-bar" aria-hidden="true"></div><div class="timeline-e">Court avec ses frères d\'armes sur la Tunnel to Towers (NYC).</div></div>' .
+    '<div class="timeline-row"><div class="timeline-y">2025</div><div class="timeline-bar" aria-hidden="true"></div><div class="timeline-e">Course au profit du Bleuet de France.</div></div>' .
+    '<div class="timeline-row"><div class="timeline-y">2026</div><div class="timeline-bar" aria-hidden="true"></div><div class="timeline-e">Marathon de l\'Espace, Kourou. En relais autour de Tim.</div></div>';
+
+$page[] = el_wrap([w_html(
+    '<section class="section section-cream" id="story">' .
+    '<div class="section-inner story-grid">' .
+
+    // Media
+    '<div class="story-media">' .
+    '<div class="story-photo"><div class="story-photo-placeholder"></div></div>' .
+    '<div class="story-photo-sub"><div class="story-photo-placeholder"></div></div>' .
+    '<div class="story-stamp">BSPP · 2012—2018</div>' .
+    '</div>' .
+
+    // Copy
+    '<div class="story-copy">' .
+    '<div class="kicker"><span class="kicker-dot" style="background:var(--accent)"></span><span>L\'Histoire</span></div>' .
+    '<h2 class="section-title">Un caporal. Une équipe de gym. Un fil qui ne casse pas.</h2>' .
+    '<p class="lede">Septembre 2012. Timothé Bernardeau, jeune Nantais, incorpore la Brigade de Sapeurs-Pompiers de Paris. Il rejoint la 11e compagnie d\'incendie et de secours, dans le Marais, comme conducteur d\'engin-pompe. De nombreuses interventions d\'ampleur, dont les attentats de janvier et novembre 2015. Plusieurs lettres de félicitations du commandement.</p>' .
+    '<p class="lede">Avril 2015 : Tim, sportif d\'exception, intègre le groupe de gymnastique de la Brigade — fondé en 1919, ambassadeur sportif et artistique de la BSPP. En trois ans, plus de 40 représentations en France et en Europe.</p>' .
+    '<p class="lede">Mai 2018. Lors d\'une représentation au profit d\'enfants malades, Tim chute lourdement. Tétraplégie. Près de deux ans et demi à l\'Institution Nationale des Invalides, puis le retour à la maison, avec sa compagne infirmière et leur fille Lyla. À 33 ans, sa résilience est sans faille. Le lien avec la caserne, lui non plus, n\'a jamais cassé.</p>' .
+    '<div class="timeline" aria-label="Chronologie">' . $timeline_rows . '</div>' .
+    '<blockquote class="pull-quote">' .
+    '<div class="pull-quote-mark" aria-hidden="true">"</div>' .
+    '<div class="pull-quote-text">« La cohésion et la fraternité de la BSPP sont sans limite. Sept ans après son accident, on franchit la ligne avec lui. »</div>' .
+    '<div class="pull-quote-who">— Le collectif Un Défi pour Tim</div>' .
+    '</blockquote>' .
+    '<a href="#defis" class="btn btn-outline">Voir le défi en détail ' . $arrow . '</a>' .
+    '</div>' . // .story-copy
+
+    '</div>' . // .story-grid
+    '</section>'
+)]);
 
 // ════════════════════════════════════════════════════════
-// DÉFIS — real Elementor cards
+// 3 — DÉFIS (dynamic — managed via WP admin → Les Défis)
 // ════════════════════════════════════════════════════════
-$page[] = el_section(NAVY, '80', [
-    el_col(100, [
-        w_kicker('Les défis', WHITE),
-        w_spacer(16),
-        w_heading('Quatre défis.<br>Un seul message.', 'h2', WHITE, 40),
-        w_spacer(48),
-
-        // Featured: 2026 upcoming
-        el_inner([
-            el_col(50, [
-                w_text('<p style="display:inline-block;font-family:Inter;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:' . BRASS . ';background:rgba(200,150,90,0.15);border-radius:3px;padding:4px 10px">À venir</p>', BRASS, 11),
-                w_spacer(12),
-                w_heading('Marathon de l\'Espace', 'h3', WHITE, 28, 1.15),
-                w_spacer(8),
-                w_text('<p style="font-family:Inter;font-size:13px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;font-weight:500">29 mars 2026 · Kourou, Guyane française</p>', 'rgba(255,255,255,0.5)', 13),
-                w_spacer(12),
-                w_text('<p>42,195 km en relais à travers la forêt amazonienne. 5 coureurs + arrivée ensemble. Depuis 1991, cette course se déroule autour des complexes de lancement Ariane — là où la BSPP détache des pompiers en mission.</p>', WHITE, 15),
-                w_spacer(12),
-                w_text('<ul style="list-style:none;padding:0;margin:0;color:rgba(255,255,255,0.7);font-family:Inter;font-size:14px;line-height:2.2">
-<li>Relais 1 — 9,360 km</li>
-<li>Relais 2 — 7,640 km</li>
-<li>Relais 3 — 8,080 km</li>
-<li>Relais 4 — 7,760 km</li>
-<li>Relais 5 — 7,580 km</li>
-<li>Arrivée ensemble — 1,775 km</li>
-</ul>', 'rgba(255,255,255,0.7)', 14),
-            ], [
-                'content_position' => 'top',
-                'background_background' => 'classic',
-                'background_color' => 'rgba(255,255,255,0.05)',
-                'border_radius' => ['unit' => 'px', 'top' => 8, 'right' => 8, 'bottom' => 8, 'left' => 8, 'isLinked' => true],
-                'padding' => ['unit' => 'px', 'top' => '32', 'right' => '32', 'bottom' => '32', 'left' => '32', 'isLinked' => false],
-            ]),
-            el_col(50, [
-                w_img('Photo · Marathon de l\'Espace<br>ou visuel Kourou / Ariane<br>→ Remplacer via la médiathèque'),
-            ], [
-                'content_position' => 'middle',
-                'padding' => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '0', 'left' => '24', 'isLinked' => false],
-            ]),
-        ], ['padding' => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '32', 'left' => '0', 'isLinked' => false]]),
-
-        // Archive
-        w_spacer(24),
-        w_heading('Les défis précédents', 'h3', 'rgba(255,255,255,0.6)', 20),
-        w_spacer(24),
-        el_inner([
-            el_col(33, [
-                w_text('<p style="font-family:Inter;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.35)">Terminé · 2025</p>', 'rgba(255,255,255,0.35)', 11),
-                w_spacer(8),
-                w_heading('Bleuet de France', 'h4', WHITE, 18, 1.2),
-                w_spacer(8),
-                w_text('<p>Course en soutien au Bleuet de France, en hommage aux soldats blessés et aux victimes civiles de guerre.</p>', 'rgba(255,255,255,0.65)', 14),
-            ], [
-                'content_position' => 'top',
-                'background_background' => 'classic',
-                'background_color' => 'rgba(255,255,255,0.04)',
-                'border_radius' => ['unit' => 'px', 'top' => 6, 'right' => 6, 'bottom' => 6, 'left' => 6, 'isLinked' => true],
-                'padding' => ['unit' => 'px', 'top' => '24', 'right' => '24', 'bottom' => '24', 'left' => '24', 'isLinked' => false],
-            ]),
-            el_col(33, [
-                w_text('<p style="font-family:Inter;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.35)">Terminé · 2023</p>', 'rgba(255,255,255,0.35)', 11),
-                w_spacer(8),
-                w_heading('Tunnel to Towers', 'h4', WHITE, 18, 1.2),
-                w_spacer(8),
-                w_text('<p>5K Run à New York aux côtés de pompiers américains, en souvenir des 343 pompiers tombés le 11 septembre 2001.</p>', 'rgba(255,255,255,0.65)', 14),
-            ], [
-                'content_position' => 'top',
-                'background_background' => 'classic',
-                'background_color' => 'rgba(255,255,255,0.04)',
-                'border_radius' => ['unit' => 'px', 'top' => 6, 'right' => 6, 'bottom' => 6, 'left' => 6, 'isLinked' => true],
-                'padding' => ['unit' => 'px', 'top' => '24', 'right' => '24', 'bottom' => '24', 'left' => '24', 'isLinked' => false],
-            ]),
-            el_col(33, [
-                w_text('<p style="font-family:Inter;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.35)">Terminé · 2021</p>', 'rgba(255,255,255,0.35)', 11),
-                w_spacer(8),
-                w_heading('Tunnel to Towers', 'h4', WHITE, 18, 1.2),
-                w_spacer(8),
-                w_text('<p>Premier défi pour Tim — 5K Run à New York en tenue de pompier, pour honorer les héros du 11 septembre.</p>', 'rgba(255,255,255,0.65)', 14),
-            ], [
-                'content_position' => 'top',
-                'background_background' => 'classic',
-                'background_color' => 'rgba(255,255,255,0.04)',
-                'border_radius' => ['unit' => 'px', 'top' => 6, 'right' => 6, 'bottom' => 6, 'left' => 6, 'isLinked' => true],
-                'padding' => ['unit' => 'px', 'top' => '24', 'right' => '24', 'bottom' => '24', 'left' => '24', 'isLinked' => false],
-            ]),
-        ]),
-    ], [
-        'content_position' => 'top',
-        'padding' => ['unit' => 'px', 'top' => '0', 'right' => '48', 'bottom' => '0', 'left' => '48', 'isLinked' => false],
-    ]),
-], ['_element_id' => 'defis']);
+$page[] = el_wrap([w_sc('[defitim_defis]')]);
 
 // ════════════════════════════════════════════════════════
-// MEMBRES
+// 4 — MEMBERS
 // ════════════════════════════════════════════════════════
-$page[] = el_section(CREAM, '80', [
-    el_col(100, [
-        w_kicker('L\'équipe'),
-        w_spacer(16),
-        w_heading('Qui compose le collectif.', 'h2', NAVY, 40),
-        w_spacer(48),
-        el_inner([
-            el_col(25, [w_counter(12, 'Sapeurs-pompiers de Paris')]),
-            el_col(25, [w_counter(6,  'Anciens pompiers')]),
-            el_col(25, [w_counter(5,  'Civils &amp; famille')]),
-            el_col(25, [w_counter(3,  'Enfants')]),
-        ]),
-        w_spacer(48),
-        el_inner([
-            el_col(50, [
-                w_heading('Adjudant-Chef Benjamin GUY', 'h3', NAVY, 20, 1.3),
-                w_spacer(4),
-                w_text('<p><strong>Responsable projet</strong><br>06 69 65 81 45<br>benjamin.guy@pompiersparis.fr</p>', NAVY, 15),
-            ], ['content_position' => 'top']),
-            el_col(50, [
-                w_heading('Timothé Bernardeau', 'h3', NAVY, 20, 1.3),
-                w_spacer(4),
-                w_text('<p><strong>Coordinateur</strong><br>06 22 16 24 33<br>bernardeau.t@gmail.com</p>', NAVY, 15),
-            ], ['content_position' => 'top']),
-        ]),
-    ], [
-        'content_position' => 'top',
-        'padding' => ['unit' => 'px', 'top' => '0', 'right' => '48', 'bottom' => '0', 'left' => '48', 'isLinked' => false],
-    ]),
-], ['_element_id' => 'members']);
+$team_cards =
+    '<div class="team-card"><div class="team-n">12</div><div class="team-label">Sapeurs-pompiers de Paris</div><div class="team-note">Dont 6 membres de l\'équipe de gymnastique de la Brigade.</div></div>' .
+    '<div class="team-card"><div class="team-n">6</div><div class="team-label">Anciens sapeurs-pompiers</div><div class="team-note">Frères d\'armes, toujours là.</div></div>' .
+    '<div class="team-card"><div class="team-n">5</div><div class="team-label">Famille Bernardeau</div><div class="team-note">Compagne, parents, proches.</div></div>' .
+    '<div class="team-card"><div class="team-n">3</div><div class="team-label">Enfants</div><div class="team-note">Lyla et deux camarades.</div></div>';
+
+$page[] = el_wrap([w_html(
+    '<section class="section section-cream" id="members">' .
+    '<div class="section-inner">' .
+    '<div class="team-head">' .
+    '<div class="kicker"><span class="kicker-dot" style="background:var(--accent)"></span><span>Membres de l\'asso</span></div>' .
+    '<h2 class="section-title">Qui compose le collectif.</h2>' .
+    '<p class="lede">Un collectif qui mélange les générations et les uniformes. Les frères d\'armes de Tim, les anciens, sa famille, et les enfants qui grandissent dans cette histoire — dont Lyla, la sienne.</p>' .
+    '</div>' .
+    '<div class="team-grid">' . $team_cards . '</div>' .
+    '<div class="members-bureau">Bureau de l\'association : Adj-Chef Benjamin GUY (président) · Timothé Bernardeau (coordinateur) · membres fondateurs au sein de la BSPP.</div>' .
+    '</div>' .
+    '</section>'
+)]);
 
 // ════════════════════════════════════════════════════════
-// MÉCÉNAT
+// 5 — MÉCENAT
 // ════════════════════════════════════════════════════════
-$page[] = el_section(WHITE, '80', [
-    el_col(58, [
-        w_kicker('Mécénat'),
-        w_spacer(16),
-        w_heading('Associez votre nom à ce projet.', 'h2', NAVY, 40),
-        w_spacer(24),
-        w_text('<p>En devenant mécène, vous associez votre marque aux valeurs de <strong>Fraternité · Cohésion · Solidarité</strong> qui guident la BSPP. Chèque à l\'ordre de <em>ASASPP</em> ou contact direct pour le dossier de partenariat.</p>', NAVY),
-        w_spacer(24),
-        w_text('<ul style="list-style:none;padding:0;margin:0;font-family:Inter;font-size:16px;color:' . NAVY . ';line-height:2">
-<li style="padding:8px 0;border-bottom:1px solid rgba(11,27,61,0.1)">✓ &nbsp;Logo sur tous les supports publicitaires de la course</li>
-<li style="padding:8px 0;border-bottom:1px solid rgba(11,27,61,0.1)">✓ &nbsp;Visibilité lors des démonstrations de gymnastique BSPP partout en France</li>
-<li style="padding:8px 0;border-bottom:1px solid rgba(11,27,61,0.1)">✓ &nbsp;Présence sur les réseaux sociaux avant, pendant et après l\'événement</li>
-<li style="padding:8px 0">✓ &nbsp;Bannière sponsor portée lors du Marathon de l\'Espace à Kourou</li>
-</ul>', NAVY),
-        w_spacer(32),
-        w_button('Contacter l\'équipe', '#contact', RED, 'lg'),
-    ], [
-        'content_position' => 'top',
-        'padding' => ['unit' => 'px', 'top' => '0', 'right' => '48', 'bottom' => '0', 'left' => '48', 'isLinked' => false],
-    ]),
-    el_col(42, [
-        w_heading('Budget prévisionnel', 'h3', NAVY, 24),
-        w_spacer(16),
-        w_text('<table style="width:100%;border-collapse:collapse;font-family:Inter;font-size:15px;color:' . NAVY . '">
-<tr style="border-bottom:1px solid rgba(11,27,61,0.12)"><td style="padding:10px 0">Vols (24 éco. + 3 PMR)</td><td style="padding:10px 0;text-align:right">25 000 €</td></tr>
-<tr style="border-bottom:1px solid rgba(11,27,61,0.12)"><td style="padding:10px 0">Hébergement (26+1 PMR)</td><td style="padding:10px 0;text-align:right">12 000 €</td></tr>
-<tr style="border-bottom:1px solid rgba(11,27,61,0.12)"><td style="padding:10px 0">Restauration</td><td style="padding:10px 0;text-align:right">4 680 €</td></tr>
-<tr style="border-bottom:1px solid rgba(11,27,61,0.12)"><td style="padding:10px 0">Transport sur place</td><td style="padding:10px 0;text-align:right">2 650 €</td></tr>
-<tr style="border-bottom:1px solid rgba(11,27,61,0.12)"><td style="padding:10px 0">Inscription + équipement</td><td style="padding:10px 0;text-align:right">3 350 €</td></tr>
-<tr style="border-bottom:1px solid rgba(11,27,61,0.12)"><td style="padding:10px 0">Tenues équipe (6 jours)</td><td style="padding:10px 0;text-align:right">4 600 €</td></tr>
-<tr style="border-bottom:2px solid ' . NAVY . '"><td style="padding:10px 0;font-weight:700">Total</td><td style="padding:10px 0;text-align:right;font-weight:700">52 780 €</td></tr>
-<tr style="border-bottom:1px solid rgba(11,27,61,0.12)"><td style="padding:10px 0">Apport propre</td><td style="padding:10px 0;text-align:right">10 000 €</td></tr>
-<tr><td style="padding:10px 0;font-weight:700;color:' . RED . '">Besoin de financement</td><td style="padding:10px 0;text-align:right;font-weight:700;color:' . RED . '">42 780 €</td></tr>
-</table>', NAVY, 15),
-        w_spacer(16),
-        w_text('<p style="font-family:Inter;font-size:12px;color:rgba(11,27,61,0.5)">Don par chèque à l\'ordre de ASASPP<br>BSPP — Caserne Masséna, 3 rue Darmesteter, 75013 Paris</p>', 'rgba(11,27,61,0.5)', 12),
-    ], [
-        'content_position' => 'top',
-        'padding' => ['unit' => 'px', 'top' => '0', 'right' => '48', 'bottom' => '0', 'left' => '24', 'isLinked' => false],
-    ]),
-], ['_element_id' => 'mecenat']);
+$mec_benefits =
+    '<div class="mec-benefit"><div class="mec-benefit-n">01</div><div class="mec-benefit-t">Banderole mécènes</div><div class="mec-benefit-b">Réalisée pour le défi, portée pendant tout le séjour à Kourou.</div></div>' .
+    '<div class="mec-benefit"><div class="mec-benefit-n">02</div><div class="mec-benefit-t">Tenues officielles</div><div class="mec-benefit-b">Logos sur les tenues « Un Défi pour Tim » portées pendant 6 jours.</div></div>' .
+    '<div class="mec-benefit"><div class="mec-benefit-n">03</div><div class="mec-benefit-t">Démonstrations gym BSPP</div><div class="mec-benefit-b">Communications lors des représentations à travers la France.</div></div>' .
+    '<div class="mec-benefit"><div class="mec-benefit-n">04</div><div class="mec-benefit-t">Réseaux sociaux</div><div class="mec-benefit-b">Avant, pendant et après le défi (Instagram, Facebook, LinkedIn).</div></div>' .
+    '<div class="mec-benefit"><div class="mec-benefit-n">05</div><div class="mec-benefit-t">Image & valeurs</div><div class="mec-benefit-b">Votre marque associée à la cohésion, la fraternité, la résilience.</div></div>' .
+    '<div class="mec-benefit"><div class="mec-benefit-n">06</div><div class="mec-benefit-t">Public ciblé</div><div class="mec-benefit-b">Une visibilité accrue auprès d\'un public varié, motivé, engagé.</div></div>';
+
+$budget_rows =
+    '<div class="budget-row"><div class="budget-k">Avion</div><div class="budget-n">24 classe éco + 3 business PMR</div><div class="budget-v">25 000 €</div></div>' .
+    '<div class="budget-row"><div class="budget-k">Hébergement</div><div class="budget-n">26 personnes + 1 PMR</div><div class="budget-v">12 000 €</div></div>' .
+    '<div class="budget-row"><div class="budget-k">Restauration</div><div class="budget-n">Sur place, sur la durée du séjour</div><div class="budget-v">4 680 €</div></div>' .
+    '<div class="budget-row"><div class="budget-k">Tenues du défi</div><div class="budget-n">« Un Défi pour Tim » — 6 jours</div><div class="budget-v">4 600 €</div></div>' .
+    '<div class="budget-row"><div class="budget-k">Inscription + équipement</div><div class="budget-n">Course à pied</div><div class="budget-v">3 350 €</div></div>' .
+    '<div class="budget-row"><div class="budget-k">Transports sur place</div><div class="budget-n">Location véhicule PMR + minibus</div><div class="budget-v">2 650 €</div></div>' .
+    '<div class="budget-row"><div class="budget-k">Visites</div><div class="budget-n">Musées, détachement BSPP</div><div class="budget-v">500 €</div></div>' .
+    '<div class="budget-row budget-row-sum"><div class="budget-k">Total</div><div class="budget-n"></div><div class="budget-v">52 780 €</div></div>' .
+    '<div class="budget-row"><div class="budget-k">Apport de la section</div><div class="budget-n"></div><div class="budget-v">− 10 000 €</div></div>' .
+    '<div class="budget-row budget-row-need"><div class="budget-k">Besoin de financement</div><div class="budget-n"></div><div class="budget-v">42 780 €</div></div>';
+
+$page[] = el_wrap([w_html(
+    '<section class="section section-cream" id="mecenat">' .
+    '<div class="section-inner">' .
+    '<div class="mec-head">' .
+    '<div class="kicker"><span class="kicker-dot" style="background:var(--accent)"></span><span>Mécénat</span></div>' .
+    '<h2 class="section-title">Soutenir, et être visible.</h2>' .
+    '<p class="lede">Vos couleurs sur la banderole, sur les tenues du défi, dans nos communications avant-pendant-après. Une démonstration de la gymnastique de la BSPP, des publications réseaux sur toutes nos plateformes — votre image associée à un projet qui rassemble.</p>' .
+    '</div>' .
+    '<div class="mec-benefits">' . $mec_benefits . '</div>' .
+    '<div class="budget">' .
+    '<div class="budget-head">' .
+    '<h3 class="budget-title">Le budget, ligne à ligne</h3>' .
+    '<p class="budget-sub">Total : 52 780 € — 10 000 € apportés par la section « Un Défi pour Tim » — il reste 42 780 € à collecter.</p>' .
+    '</div>' .
+    '<div class="budget-table">' . $budget_rows . '</div>' .
+    '</div>' .
+    '</div>' .
+    '</section>'
+)]);
 
 // ════════════════════════════════════════════════════════
-// SENS
+// 6 — SENS
 // ════════════════════════════════════════════════════════
-$page[] = el_section(NAVY, '80', [
-    el_col(100, [
-        w_kicker('Pourquoi ce défi', WHITE),
-        w_spacer(16),
-        w_heading('Le sens de chaque kilomètre.', 'h2', WHITE, 40),
-        w_spacer(24),
-        w_text('<p>Tim avait couru le Marathon de New York avant son accident. Un marathon en relais, c\'est différent — mais cela prouve que tout reste possible. Que la solidarité transforme l\'impossible en aventure collective.</p>', WHITE),
-        w_spacer(16),
-        w_text('<p>Kourou accueille un détachement de la BSPP. Aller courir là-bas, c\'est aussi aller serrer la main à des frères en mission loin de Paris. Chaque kilomètre couru est un message : <strong style="color:' . BRASS . '">vous n\'êtes pas seuls.</strong></p>', WHITE),
-        w_spacer(32),
-        w_text('<blockquote style="border-left:3px solid ' . RED . ';padding:16px 0 16px 24px;margin:0"><p style="font-family:Archivo Black;font-size:22px;color:' . BRASS . ';line-height:1.3;margin:0">« Force et courage, Tim. Nous courrons pour toi. »</p></blockquote>', BRASS),
-    ], [
-        'content_position' => 'top',
-        'padding' => ['unit' => 'px', 'top' => '0', 'right' => '48', 'bottom' => '0', 'left' => '48', 'isLinked' => false],
-    ]),
-], ['_element_id' => 'sens']);
+$sens_points =
+    '<div class="sens-point"><div class="sens-n">01</div><div class="sens-t">Kourou</div><div class="sens-b">Un des détachements de la Brigade de Sapeurs-Pompiers de Paris.</div></div>' .
+    '<div class="sens-point"><div class="sens-n">02</div><div class="sens-t">Un marathon</div><div class="sens-b">Un défi sportif qui démontrera la condition physique des SPP.</div></div>' .
+    '<div class="sens-point"><div class="sens-n">03</div><div class="sens-t">Un relais</div><div class="sens-b">20 sapeurs-pompiers se relaient pour franchir la ligne avec Tim.</div></div>' .
+    '<div class="sens-point"><div class="sens-n">04</div><div class="sens-t">Sept ans après</div><div class="sens-b">La preuve, encore et toujours, que la cohésion et la fraternité de la BSPP sont sans limite.</div></div>';
+
+$page[] = el_wrap([w_html(
+    '<section class="section section-navy section-sens">' .
+    '<div class="section-inner">' .
+    '<div class="sens-head">' .
+    '<div class="kicker"><span class="kicker-dot" style="background:var(--brass)"></span><span>Un projet qui a du sens</span></div>' .
+    '<h2 class="section-title section-title-light">Pourquoi celui-ci, pourquoi maintenant.</h2>' .
+    '</div>' .
+    '<div class="sens-grid">' . $sens_points . '</div>' .
+    '<p class="sens-ny">Avant son accident, Tim avait couru le Marathon de New York. Le Marathon de l\'Espace, en relais, dira la même chose autrement : tout est encore possible.</p>' .
+    '</div>' .
+    '</section>'
+)]);
 
 // ════════════════════════════════════════════════════════
-// HELP — donation (real widgets)
+// 7 — HELP / DONATE
 // ════════════════════════════════════════════════════════
-$page[] = el_section(RED, '80', [
-    el_col(55, [
-        w_kicker('Collecte de fonds', 'rgba(255,255,255,0.7)'),
-        w_spacer(16),
-        w_heading('Soutenir le défi.', 'h2', WHITE, 48, 1.0),
-        w_spacer(24),
-        w_text('<p>Chaque don contribue directement au financement du voyage et permet à Tim et sa famille d\'être présents à Kourou pour vivre ce moment aux côtés de l\'équipe.</p>', WHITE),
-        w_spacer(16),
-        w_text('<p><strong>HelloAsso</strong> : plateforme 100 % gratuite pour les associations. 100 % de votre don revient à l\'équipe — HelloAsso est financé par le pourboire facultatif des donateurs.</p>', 'rgba(255,255,255,0.85)', 15),
-        w_spacer(32),
-        w_button('Faire un don via HelloAsso', 'https://www.helloasso.com', WHITE, 'xl', 'left'),
-        w_spacer(8),
-        w_text('<p style="font-family:Inter;font-size:13px;color:rgba(255,255,255,0.6)">Paiement sécurisé · CB, Visa, Mastercard</p>', 'rgba(255,255,255,0.6)', 13),
-    ], [
-        'content_position' => 'top',
-        'padding' => ['unit' => 'px', 'top' => '0', 'right' => '48', 'bottom' => '0', 'left' => '48', 'isLinked' => false],
-    ]),
-    el_col(45, [
-        w_heading('Don par chèque', 'h3', WHITE, 20),
-        w_spacer(12),
-        w_text('<p>Chèque à l\'ordre de : <strong>ASASPP</strong><br>BSPP — Caserne Masséna<br>3 rue Darmesteter · 75013 Paris</p>', 'rgba(255,255,255,0.85)', 15),
-        w_spacer(28),
-        w_heading('Don par virement', 'h3', WHITE, 20),
-        w_spacer(12),
-        w_text('<p>Coordonnées bancaires disponibles sur demande — contactez-nous via le formulaire ci-dessous.</p>', 'rgba(255,255,255,0.85)', 15),
-    ], [
-        'content_position' => 'top',
-        'background_background' => 'classic',
-        'background_color' => 'rgba(0,0,0,0.12)',
-        'border_radius' => ['unit' => 'px', 'top' => 8, 'right' => 8, 'bottom' => 8, 'left' => 8, 'isLinked' => true],
-        'padding' => ['unit' => 'px', 'top' => '40', 'right' => '40', 'bottom' => '40', 'left' => '40', 'isLinked' => false],
-        'margin' => ['unit' => 'px', 'right' => '48', 'left' => '0', 'isLinked' => false],
-    ]),
-], ['_element_id' => 'help']);
+$page[] = el_wrap([w_html(
+    '<section class="section section-cream" id="help">' .
+    '<div class="section-inner">' .
+    '<div class="help-head">' .
+    '<div class="kicker"><span class="kicker-dot" style="background:var(--accent)"></span><span>Soutenir Tim</span></div>' .
+    '<h2 class="section-title">Trois façons d\'agir.</h2>' .
+    '</div>' .
+    '<div class="help-grid">' .
+
+    // Donate box
+    '<div class="help-donate">' .
+    '<div class="help-donate-top"><div class="help-donate-num">01</div><h3 class="help-donate-title">Donner</h3></div>' .
+    '<p class="help-donate-body">Don en chèque à l\'ordre de « ASASPP » — adressé à la BSPP, Caserne Masséna, 3 rue Darmesteter, 75013 Paris. Ou donnez en ligne via HelloAsso.</p>' .
+    '<div class="help-donate-pick">' .
+    '<div class="help-donate-pick-label">Don suggéré</div>' .
+    '<div class="help-donate-amounts" role="group" aria-label="Montant du don">' .
+    '<button class="amt" type="button" data-amount="20" aria-pressed="false">€20</button>' .
+    '<button class="amt amt-active" type="button" data-amount="50" aria-pressed="true">€50</button>' .
+    '<button class="amt" type="button" data-amount="100" aria-pressed="false">€100</button>' .
+    '<button class="amt" type="button" data-amount="250" aria-pressed="false">€250</button>' .
+    '<div class="amt amt-custom"><span aria-hidden="true">€</span><input type="number" id="amount-custom" min="1" placeholder="Autre" aria-label="Montant libre en euros"></div>' .
+    '</div>' .
+    '<div class="help-donate-sub">Don à l\'ordre de « ASASPP ». Reçu fiscal pour les dons éligibles.</div>' .
+    '<button class="btn btn-primary btn-lg help-donate-go" id="donate-btn" type="button">Préparer mon don · <span id="donate-amount">€50</span> ' . $arrow . '</button>' .
+    '</div>' .
+    '</div>' . // .help-donate
+
+    // Side cards
+    '<div class="help-side">' .
+    '<div class="help-card">' .
+    '<div class="help-card-num">02</div>' .
+    '<h3 class="help-card-title">Devenir mécène</h3>' .
+    '<p class="help-card-body">Vous êtes une entreprise, une amicale, un club ? Associez votre nom au projet. Le dossier de mécénat détaille tous les niveaux d\'engagement et les contreparties.</p>' .
+    '<a href="#contact" class="help-card-cta">Contacter l\'équipe ' . $arrow . '</a>' .
+    '</div>' .
+    '<div class="help-card">' .
+    '<div class="help-card-num">03</div>' .
+    '<h3 class="help-card-title">Partager</h3>' .
+    '<p class="help-card-body">Suivez et relayez nos publications avant, pendant et après le séjour. Chaque partage compte autant qu\'un don.</p>' .
+    '<button class="help-card-cta" type="button" id="share-btn">Partager la page ' . $arrow . '</button>' .
+    '</div>' .
+    '</div>' . // .help-side
+
+    '</div>' . // .help-grid
+    '</div>' . // .section-inner
+    '</section>'
+)]);
 
 // ════════════════════════════════════════════════════════
-// PROGRESS (real widgets)
+// 8 — PROGRESS (dynamic — update via WP admin → Défi Tim → Collecte & FAQ)
 // ════════════════════════════════════════════════════════
-$page[] = el_section(NAVY, '80', [
-    el_col(100, [
-        w_kicker('La collecte', WHITE),
-        w_spacer(16),
-        w_heading('Où en sommes-nous ?', 'h2', WHITE, 40),
-        w_spacer(40),
-        el_inner([
-            el_col(33, [w_counter(0,     'Collecté',    ' €',  '', RED, WHITE)]),
-            el_col(33, [w_counter(0,     'Donateurs',   '',    '', RED, WHITE)]),
-            el_col(33, [w_counter(42780, 'Objectif',    ' €',  '', RED, WHITE)]),
-        ]),
-        w_spacer(40),
-        w_progress(0, 'Avancement de la collecte — 0 %'),
-        w_spacer(16),
-        w_text('<p style="text-align:center;font-family:Inter;font-size:13px;color:rgba(255,255,255,0.4)">Pour mettre à jour : cliquez sur les chiffres directement dans l\'éditeur Elementor, puis modifiez la valeur et la barre de progression.</p>', 'rgba(255,255,255,0.4)', 13),
-    ], [
-        'content_position' => 'top',
-        'padding' => ['unit' => 'px', 'top' => '0', 'right' => '48', 'bottom' => '0', 'left' => '48', 'isLinked' => false],
-    ]),
-], ['_element_id' => 'progress']);
+$page[] = el_wrap([w_sc('[defitim_progress]')]);
 
 // ════════════════════════════════════════════════════════
-// SPONSORS (real widgets)
+// 9 — SPONSORS (dynamic — update via WP admin → Défi Tim → Contact & Partenaires)
 // ════════════════════════════════════════════════════════
-$page[] = el_section(CREAM, '80', [
-    el_col(100, [
-        w_kicker('Partenaires'),
-        w_spacer(16),
-        w_heading('Mécènes & partenaires.', 'h2', NAVY, 40),
-        w_spacer(16),
-        w_text('<p>Ils font partie de l\'aventure et associent leur image aux valeurs portées par l\'équipe.</p>', NAVY),
-        w_spacer(48),
-        el_inner([
-            el_col(25, [w_img('Logo mécène 1<br>→ Cliquer → Changer l\'image')]),
-            el_col(25, [w_img('Logo mécène 2<br>→ Cliquer → Changer l\'image')]),
-            el_col(25, [w_img('Logo mécène 3<br>→ Cliquer → Changer l\'image')]),
-            el_col(25, [w_img('Logo mécène 4<br>→ Cliquer → Changer l\'image')]),
-        ], ['padding' => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '32', 'left' => '0', 'isLinked' => false]]),
-        w_spacer(16),
-        w_text('<p style="text-align:center;font-family:Inter;font-size:15px;color:rgba(11,27,61,0.6)">Votre entreprise peut rejoindre l\'aventure — <a href="#contact" style="color:' . RED . ';font-weight:600">contactez-nous</a> pour le dossier de partenariat.</p>', 'rgba(11,27,61,0.6)', 15),
-        w_spacer(24),
-        w_button('Devenir partenaire', '#contact', RED, 'lg', 'center'),
-    ], [
-        'content_position' => 'top',
-        'padding' => ['unit' => 'px', 'top' => '0', 'right' => '48', 'bottom' => '0', 'left' => '48', 'isLinked' => false],
-    ]),
-], ['_element_id' => 'sponsors']);
+$page[] = el_wrap([w_sc('[defitim_sponsors]')]);
 
 // ════════════════════════════════════════════════════════
-// FAQ (Elementor accordion widget)
+// 10 — FAQ (dynamic — update via WP admin → Défi Tim → Collecte & FAQ)
 // ════════════════════════════════════════════════════════
-$page[] = el_section(WHITE, '80', [
-    el_col(100, [
-        w_kicker('Questions fréquentes'),
-        w_spacer(16),
-        w_heading('Vous avez des questions ?', 'h2', NAVY, 40),
-        w_spacer(40),
-        w_accordion([
-            [
-                'Comment faire un don ?',
-                'Le moyen le plus simple est de cliquer sur "Faire un don via HelloAsso" — c\'est gratuit, sécurisé, et 100 % de votre don revient à l\'équipe. Vous pouvez aussi envoyer un chèque à l\'ordre de <strong>ASASPP</strong>, à l\'adresse : BSPP — Caserne Masséna, 3 rue Darmesteter, 75013 Paris.',
-            ],
-            [
-                'Puis-je obtenir un reçu fiscal ?',
-                'L\'ASASPP est une association. Les dons peuvent ouvrir droit à une réduction d\'impôt selon votre situation. Contactez l\'équipe via le formulaire pour plus d\'informations sur les justificatifs disponibles.',
-            ],
-            [
-                'Où va mon don exactement ?',
-                'Le financement couvre les frais réels du voyage : vols (dont 3 en classe affaires pour l\'accessibilité PMR de Tim), hébergement, restauration, transport adapté, inscription à la course et équipement de l\'équipe. L\'objectif est de permettre à Tim et sa famille d\'être présents à Kourou le 29 mars 2026.',
-            ],
-            [
-                'Qui organise ce défi ?',
-                'Le défi est organisé par l\'<strong>Adjudant-Chef Benjamin GUY</strong> et coordonné par <strong>Timothé Bernardeau</strong> lui-même, sous l\'égide de l\'ASASPP (Association de Soutien à l\'Action Sociale des Sapeurs-Pompiers de Paris).',
-            ],
-            [
-                'Comment devenir sponsor ou partenaire ?',
-                'Contactez Benjamin GUY (benjamin.guy@pompiersparis.fr / 06 69 65 81 45) ou utilisez le formulaire de contact ci-dessous. Un dossier de partenariat vous sera envoyé avec les contreparties selon le niveau de mécénat.',
-            ],
-            [
-                'Comment rester informé de l\'avancement ?',
-                'Suivez l\'équipe sur les réseaux sociaux (Instagram, Facebook, LinkedIn) pour des mises à jour avant, pendant et après le Marathon de l\'Espace. Le site est mis à jour après chaque étape.',
-            ],
-        ]),
-    ], [
-        'content_position' => 'top',
-        'padding' => ['unit' => 'px', 'top' => '0', 'right' => '48', 'bottom' => '0', 'left' => '48', 'isLinked' => false],
-    ]),
-], ['_element_id' => 'faq']);
+$page[] = el_wrap([w_sc('[defitim_faq]')]);
 
 // ════════════════════════════════════════════════════════
-// CONTACT (real widgets + shortcode for form only)
+// 11 — CONTACT
+// Contact form: nonce comes from window.defitim.nonce (wp_localize_script),
+// not from a PHP form field — static HTML is safe.
 // ════════════════════════════════════════════════════════
-$page[] = el_section(NAVY, '80', [
-    el_col(100, [
-        w_kicker('Contact', WHITE),
-        w_spacer(16),
-        w_heading('Nous contacter.', 'h2', WHITE, 40),
-        w_spacer(48),
-        el_inner([
-            el_col(50, [
-                w_text('<div style="background:rgba(255,255,255,0.06);border-radius:8px;padding:28px">
-<p style="font-family:Archivo Black;font-size:18px;color:' . WHITE . ';margin:0 0 4px">Benjamin GUY</p>
-<p style="font-family:Inter;font-size:12px;color:' . BRASS . ';text-transform:uppercase;letter-spacing:1px;font-weight:600;margin:0 0 16px">Adjudant-Chef · Responsable projet</p>
-<p style="font-family:Inter;font-size:15px;color:rgba(255,255,255,0.8);margin:0 0 6px">📞 06 69 65 81 45</p>
-<p style="font-family:Inter;font-size:15px;color:rgba(255,255,255,0.8);margin:0">✉ benjamin.guy@pompiersparis.fr</p>
-</div>', WHITE, 15),
-                w_spacer(16),
-                w_text('<div style="background:rgba(255,255,255,0.06);border-radius:8px;padding:28px">
-<p style="font-family:Archivo Black;font-size:18px;color:' . WHITE . ';margin:0 0 4px">Timothé Bernardeau</p>
-<p style="font-family:Inter;font-size:12px;color:' . BRASS . ';text-transform:uppercase;letter-spacing:1px;font-weight:600;margin:0 0 16px">Coordinateur</p>
-<p style="font-family:Inter;font-size:15px;color:rgba(255,255,255,0.8);margin:0 0 6px">📞 06 22 16 24 33</p>
-<p style="font-family:Inter;font-size:15px;color:rgba(255,255,255,0.8);margin:0">✉ bernardeau.t@gmail.com</p>
-</div>', WHITE, 15),
-                w_spacer(24),
-                w_text('<p style="font-family:Inter;font-size:13px;color:rgba(255,255,255,0.35)">BSPP — Caserne Masséna · 3 rue Darmesteter · 75013 Paris</p>', 'rgba(255,255,255,0.35)', 13),
-                w_spacer(16),
-                el_widget('social-icons', [
-                    'social_icon_list' => [
-                        ['_id' => uid(), 'social_icon' => ['value' => 'fab fa-instagram', 'library' => 'fa-brands'], 'link' => ['url' => 'https://www.instagram.com/', 'is_external' => 'on'], 'item_icon_color' => 'custom', 'icon_primary_color' => RED, 'icon_secondary_color' => WHITE],
-                        ['_id' => uid(), 'social_icon' => ['value' => 'fab fa-facebook',  'library' => 'fa-brands'], 'link' => ['url' => 'https://www.facebook.com/',  'is_external' => 'on'], 'item_icon_color' => 'custom', 'icon_primary_color' => RED, 'icon_secondary_color' => WHITE],
-                        ['_id' => uid(), 'social_icon' => ['value' => 'fab fa-linkedin',   'library' => 'fa-brands'], 'link' => ['url' => 'https://www.linkedin.com/',   'is_external' => 'on'], 'item_icon_color' => 'custom', 'icon_primary_color' => RED, 'icon_secondary_color' => WHITE],
-                        ['_id' => uid(), 'social_icon' => ['value' => 'fab fa-youtube',    'library' => 'fa-brands'], 'link' => ['url' => 'https://www.youtube.com/',    'is_external' => 'on'], 'item_icon_color' => 'custom', 'icon_primary_color' => RED, 'icon_secondary_color' => WHITE],
-                    ],
-                    'icon_size'  => ['unit' => 'px', 'size' => 20, 'sizes' => []],
-                    'shape'      => 'circle',
-                    'color_type' => 'custom',
-                ]),
-            ], ['content_position' => 'top']),
-            el_col(50, [
-                w_text('<p style="font-family:Inter;font-weight:600;font-size:16px;color:' . WHITE . ';margin:0 0 20px">Envoyez-nous un message</p>', WHITE, 16),
-                w_html('<form class="contact-form" id="contact-form" novalidate>
-  <div class="cf-row">
-    <label>
-      <span>Nom</span>
-      <input type="text" name="nom" required placeholder="Votre nom">
-    </label>
-    <label>
-      <span>Email</span>
-      <input type="email" name="email" required placeholder="votre@email.fr">
-    </label>
-  </div>
-  <label class="cf-full">
-    <span>Sujet</span>
-    <input type="text" name="sujet" value="Mécénat — Un défi pour Tim" required>
-  </label>
-  <label class="cf-full">
-    <span>Message</span>
-    <textarea name="message" rows="5" required placeholder="Votre message…"></textarea>
-  </label>
-  <div class="cf-feedback" role="alert" aria-live="polite" hidden></div>
-  <button class="btn btn-primary btn-lg" type="submit">
-    Envoyer
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" style="width:18px;height:18px;vertical-align:middle;margin-left:6px"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-  </button>
-</form>'),
-            ], [
-                'content_position' => 'top',
-                'padding' => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '0', 'left' => '40', 'isLinked' => false],
-            ]),
-        ]),
-    ], [
-        'content_position' => 'top',
-        'padding' => ['unit' => 'px', 'top' => '0', 'right' => '48', 'bottom' => '0', 'left' => '48', 'isLinked' => false],
-    ]),
-], ['_element_id' => 'contact']);
+$contact_cards =
+    '<div class="contact-card">' .
+    '<div class="contact-card-role">Responsable projet</div>' .
+    '<div class="contact-card-name">Adjudant-Chef Benjamin GUY</div>' .
+    '<div class="contact-card-row"><span class="contact-card-l">Tél</span><a href="tel:+33669658145">06 69 65 81 45</a></div>' .
+    '<div class="contact-card-row"><span class="contact-card-l">Mail</span><a href="mailto:benjamin.guy@pompiersparis.fr">benjamin.guy@pompiersparis.fr</a></div>' .
+    '</div>' .
+    '<div class="contact-card">' .
+    '<div class="contact-card-role">Coordinateur projet</div>' .
+    '<div class="contact-card-name">Timothé Bernardeau</div>' .
+    '<div class="contact-card-row"><span class="contact-card-l">Tél</span><a href="tel:+33622162433">06 22 16 24 33</a></div>' .
+    '<div class="contact-card-row"><span class="contact-card-l">Mail</span><a href="mailto:bernardeau.t@gmail.com">bernardeau.t@gmail.com</a></div>' .
+    '</div>';
+
+$page[] = el_wrap([w_html(
+    '<section class="section section-navy section-contact" id="contact">' .
+    '<div class="section-inner contact-grid">' .
+
+    // Left
+    '<div class="contact-left">' .
+    '<div class="kicker"><span class="kicker-dot" style="background:var(--brass)"></span><span>Contact</span></div>' .
+    '<h2 class="section-title section-title-light">On vous répond.</h2>' .
+    '<p class="lede lede-light">Pour une question, un projet d\'événement ou un dossier de mécénat, deux contacts directs au sein du collectif.</p>' .
+    '<div class="contact-cards">' . $contact_cards . '</div>' .
+    '<div class="contact-don">' .
+    '<div class="contact-don-label">Dons en chèque à l\'ordre de « ASASPP »</div>' .
+    '<div class="contact-don-addr">BSPP — Caserne Masséna, 3 rue Darmesteter, 75013 Paris</div>' .
+    '</div>' .
+    '<div class="contact-social">' .
+    '<div class="contact-social-label">Suivre la BSPP</div>' .
+    '<div class="contact-social-row">' .
+    '<a href="#" rel="noopener noreferrer" target="_blank" aria-label="Instagram">IG</a>' .
+    '<a href="#" rel="noopener noreferrer" target="_blank" aria-label="Facebook">FB</a>' .
+    '<a href="#" rel="noopener noreferrer" target="_blank" aria-label="LinkedIn">IN</a>' .
+    '<a href="https://www.pompiersparis.fr" rel="noopener noreferrer" target="_blank" aria-label="Site BSPP">BSPP</a>' .
+    '</div>' .
+    '</div>' .
+    '</div>' . // .contact-left
+
+    // Form
+    '<form class="contact-form" id="contact-form" novalidate>' .
+    '<div class="cf-row">' .
+    '<label><span>Nom</span><input type="text" name="nom" required placeholder="Votre nom"></label>' .
+    '<label><span>Email</span><input type="email" name="email" required placeholder="votre@email.fr"></label>' .
+    '</div>' .
+    '<label class="cf-full"><span>Sujet</span><input type="text" name="sujet" value="Mécénat — Un défi pour Tim" required></label>' .
+    '<label class="cf-full"><span>Message</span><textarea name="message" rows="5" required placeholder="Votre message…"></textarea></label>' .
+    '<div class="cf-feedback" role="alert" aria-live="polite" hidden></div>' .
+    '<button class="btn btn-primary btn-lg" type="submit">Envoyer ' . $arrow . '</button>' .
+    '</form>' .
+
+    '</div>' . // .contact-grid
+    '</section>'
+)]);
 
 // ════════════════════════════════════════════════════════
-// FOOTER
+// 12 — FOOTER
 // ════════════════════════════════════════════════════════
-$page[] = el_section(NAVY, '32', [
-    el_col(50, [
-        w_heading('Un Défi pour <span style="color:' . RED . '">Tim</span>', 'div', WHITE, 16, 1.3),
-        w_spacer(8),
-        w_text('<p>Brigade de Sapeurs-Pompiers de Paris<br>Caserne Masséna · 3 rue Darmesteter · 75013 Paris</p>', 'rgba(255,255,255,0.45)', 13),
-    ], ['content_position' => 'middle']),
-    el_col(50, [
-        w_text('<p style="text-align:right;font-family:Inter;font-size:12px;color:rgba(255,255,255,0.35)">© 2026 Un Défi pour Tim — Association ASASPP<br><a href="/mentions-legales" style="color:rgba(255,255,255,0.35);text-decoration:underline">Mentions légales</a> · <a href="/confidentialite" style="color:rgba(255,255,255,0.35);text-decoration:underline">Confidentialité</a></p>',
-            'rgba(255,255,255,0.35)', 12),
-    ], ['content_position' => 'middle']),
-], [
-    'css_classes' => 'dt-footer',
-    'padding'     => ['unit' => 'px', 'top' => '32', 'right' => '48', 'bottom' => '32', 'left' => '48', 'isLinked' => false],
-]);
+$page[] = el_wrap([w_html(
+    '<footer class="footer">' .
+    '<div class="footer-inner">' .
+    '<div class="footer-brand">' .
+    '<span class="brand-mark" aria-hidden="true"><span class="brand-mark-bar"></span><span class="brand-mark-bar"></span><span class="brand-mark-bar"></span></span>' .
+    '<span class="brand-text"><span class="brand-defi">DÉFI</span><span class="brand-tim">TIM</span></span>' .
+    '</div>' .
+    '<p class="footer-tag">Un défi pour Tim — événement initié par la Brigade de Sapeurs-Pompiers de Paris en soutien au caporal Timothé Bernardeau.</p>' .
+    '<div class="footer-links"><a href="#">Mentions légales</a><a href="#">Confidentialité</a><a href="#contact">Contact</a></div>' .
+    '<div class="footer-copy">© 2026 Collectif Un Défi pour Tim. Soutenu par la BSPP.</div>' .
+    '</div>' .
+    '</footer>'
+)]);
 
-// ─── Save to WordPress ────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+//  SAVE TO WORDPRESS
+// ─────────────────────────────────────────────────────────
 $front_page_id = (int) get_option('page_on_front');
 if (!$front_page_id) {
-    WP_CLI::error('page_on_front is not set.');
+    WP_CLI::error('No front page set in Settings → Reading.');
     exit;
 }
 
 $json = wp_json_encode($page);
-// wp_unslash() strips backslashes when storing meta — wp_slash() pre-doubles them so the
-// JSON's \" sequences survive and json_decode() can read it back correctly.
-update_post_meta($front_page_id, '_elementor_data', wp_slash($json));
+
+// wp_unslash() strips backslashes when storing meta (WordPress assumes pre-slashed form data).
+// wp_slash() pre-doubles them so the JSON's \" and \u sequences survive intact.
+update_post_meta($front_page_id, '_elementor_data',          wp_slash($json));
 update_post_meta($front_page_id, '_elementor_edit_mode',     'builder');
 update_post_meta($front_page_id, '_elementor_template_type', 'wp-page');
 update_post_meta($front_page_id, '_wp_page_template',        'elementor_canvas');
 
-// Delete only the front page CSS — never clear_cache() globally, it nukes the Kit CSS
-// and Elementor 4.x crashes when regenerating Kit CSS if _elementor_page_settings is
-// stored as a JSON string (as it is by default) instead of a PHP-serialized array.
+// Delete only the front-page CSS — never clear_cache() globally (crashes Kit CSS regeneration).
 if (class_exists('\Elementor\Core\Files\CSS\Post')) {
-    $post_css = new \Elementor\Core\Files\CSS\Post($front_page_id);
-    $post_css->delete();
+    (new \Elementor\Core\Files\CSS\Post($front_page_id))->delete();
 }
 
-WP_CLI::success(sprintf('Page built: %d sections · %d bytes of JSON', count($page), strlen($json)));
-WP_CLI::log("Edit in Elementor → https://undefipourtim.com/wp-admin/post.php?post={$front_page_id}&action=elementor");
+WP_CLI::success(sprintf(
+    'Front page %d rebuilt — %s bytes, %d sections.',
+    $front_page_id,
+    number_format(strlen($json)),
+    count($page)
+));
