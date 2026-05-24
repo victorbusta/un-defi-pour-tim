@@ -158,6 +158,20 @@ add_action('acf/init', function () {
 });
 
 /* ============================================================
+   PROTECT FRONT PAGE ELEMENTOR MODE
+   Saving the page through WP admin / Gutenberg clears _elementor_edit_mode,
+   which makes Elementor skip rendering the page. This hook re-pins it.
+   ============================================================ */
+add_action('save_post', function (int $post_id) {
+    if (wp_is_post_autosave($post_id) || wp_is_post_revision($post_id)) return;
+    if ((int) get_option('page_on_front') !== $post_id) return;
+    // Restore Elementor builder mode — do not let classic/Gutenberg editor clear it.
+    update_post_meta($post_id, '_elementor_edit_mode',     'builder');
+    update_post_meta($post_id, '_elementor_template_type', 'wp-page');
+    update_post_meta($post_id, '_wp_page_template',        'elementor_canvas');
+}, 99);
+
+/* ============================================================
    SECURITY: DISABLE XMLRPC, HIDE WP VERSION
    ============================================================ */
 add_filter('xmlrpc_enabled', '__return_false');
