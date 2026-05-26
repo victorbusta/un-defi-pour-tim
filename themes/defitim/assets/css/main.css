@@ -492,7 +492,14 @@ img,svg { display: block; max-width: 100%; }
 /* ── Elementor: lift 1140px container constraint on our stretched wrapper sections.
    Each section wraps one HTML widget whose inner markup handles its own max-width
    via .section-inner / .hero-inner / etc. The Elementor container must be unconstrained
-   so backgrounds fill the full viewport. ── */
+   so backgrounds fill the full viewport.
+   !important required — elementor-kit CSS loads after this file in the head. ── */
 .elementor-section-stretched.elementor-section-boxed > .elementor-container {
-  max-width: none;
+  max-width: none !important;
 }
+
+/* ── Nav hamburger: hidden on desktop, shown on mobile ── */
+@media (min-width: 1101px) { .nav-toggle { display: none; } }
+
+/* ── Elementor editor: ensure the canvas iframe fills its container ── */
+.elementor-editor-active .elementor { min-height: 100vh; }

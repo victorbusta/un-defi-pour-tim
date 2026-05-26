@@ -1,13 +1,12 @@
 <?php
 /**
- * Build Elementor front page — original design, pixel-perfect.
+ * Build Elementor front page.
  *
  * Strategy:
- *   - Static sections → w_html() widgets with exact HTML from PHP templates.
- *     CSS classes from main.css apply directly → pixel-perfect match.
- *     Editable in Elementor by clicking the HTML widget and editing content.
- *   - Dynamic sections (défis, progress, sponsors, faq) → w_sc() shortcode widgets.
- *     Content managed via WordPress admin → appears live in Elementor editor.
+ *   - Sections 2, 4, 5, 6 → native Elementor widgets (heading, text-editor, button)
+ *     for full visual editing in the Elementor sidebar panel.
+ *   - Nav, Hero, Help, Contact, Footer → HTML widgets (interactive / CSS-structural).
+ *   - Dynamic sections (défis, progress, sponsors, faq) → shortcode widgets.
  *
  * Run: wp eval-file themes/defitim/scripts/build-elementor-page.php --path=/var/www/html --allow-root
  */
@@ -23,18 +22,16 @@ function uid(): string {
     return $id;
 }
 
-// Full-width transparent Elementor section.
-// layout=full_width → adds elementor-section-full_width, removes max-width from container.
-// stretch_section → section goes edge-to-edge.
-function el_wrap(array $widgets): array {
+// Full-width section with single 100% column.
+function el_wrap(array $widgets, array $section_extra = []): array {
     return [
         'id' => uid(), 'elType' => 'section', 'isInner' => false,
-        'settings' => [
+        'settings' => array_merge([
             'stretch_section' => 'section-stretched',
             'layout'          => 'full_width',
             'gap'             => 'no',
             'padding'         => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '0', 'left' => '0', 'isLinked' => true],
-        ],
+        ], $section_extra),
         'elements' => [[
             'id' => uid(), 'elType' => 'column', 'isInner' => false,
             'settings' => [
@@ -46,26 +43,146 @@ function el_wrap(array $widgets): array {
     ];
 }
 
-// HTML widget — renders raw HTML; click-to-edit in Elementor editor
+// HTML widget — raw HTML; editable as code in Elementor.
 function w_html(string $html): array {
-    return ['id' => uid(), 'elType' => 'widget', 'widgetType' => 'html', 'settings' => ['html' => $html], 'elements' => []];
+    return ['id' => uid(), 'elType' => 'widget', 'widgetType' => 'html',
+            'settings' => ['html' => $html], 'elements' => []];
 }
 
-// Shortcode widget — renders dynamic PHP section; content managed via WP admin
+// Shortcode widget.
 function w_sc(string $code): array {
-    return ['id' => uid(), 'elType' => 'widget', 'widgetType' => 'shortcode', 'settings' => ['shortcode' => $code], 'elements' => []];
+    return ['id' => uid(), 'elType' => 'widget', 'widgetType' => 'shortcode',
+            'settings' => ['shortcode' => $code], 'elements' => []];
 }
 
+// Native heading widget — editable via Elementor sidebar.
+function w_heading(string $text, string $tag = 'h2', array $extra_settings = []): array {
+    return [
+        'id' => uid(), 'elType' => 'widget', 'widgetType' => 'heading',
+        'settings' => array_merge([
+            'title'                      => $text,
+            'header_size'                => $tag,
+            'title_color'                => '#0B1B3D',
+            'typography_typography'      => 'custom',
+            'typography_font_family'     => 'Archivo Black',
+            'typography_font_weight'     => '900',
+            'typography_font_size'       => ['unit' => 'px', 'size' => 48],
+            'typography_font_size_tablet'=> ['unit' => 'px', 'size' => 36],
+            'typography_line_height'     => ['unit' => 'em', 'size' => 1.0],
+            'typography_letter_spacing'  => ['unit' => 'px', 'size' => -1],
+        ], $extra_settings),
+        'elements' => [],
+    ];
+}
+
+// Native text-editor widget — rich-text editable in Elementor sidebar.
+function w_text(string $html, array $extra_settings = []): array {
+    return [
+        'id' => uid(), 'elType' => 'widget', 'widgetType' => 'text-editor',
+        'settings' => array_merge([
+            'editor'                => $html,
+            'text_color'            => '#1A1A1A',
+            'typography_typography' => 'custom',
+            'typography_font_size'  => ['unit' => 'px', 'size' => 17],
+            'typography_line_height'=> ['unit' => 'em', 'size' => 1.6],
+        ], $extra_settings),
+        'elements' => [],
+    ];
+}
+
+// Native button widget — editable in Elementor sidebar.
+function w_btn(string $text, string $url, string $style = 'primary', array $extra_settings = []): array {
+    $styles = [
+        'primary' => [
+            'background_color'            => '#E63329',
+            'button_text_color'           => '#F4EFE6',
+            'button_background_color_hover' => '#C2261D',
+            'button_text_color_hover'     => '#F4EFE6',
+            'border_border'               => 'none',
+        ],
+        'outline' => [
+            'background_color'            => 'transparent',
+            'button_text_color'           => '#0B1B3D',
+            'button_background_color_hover' => '#0B1B3D',
+            'button_text_color_hover'     => '#F4EFE6',
+            'border_border'               => 'solid',
+            'border_width'                => ['unit' => 'px', 'top' => '2', 'right' => '2', 'bottom' => '2', 'left' => '2', 'isLinked' => true],
+            'border_color'                => '#0B1B3D',
+        ],
+        'outline-light' => [
+            'background_color'            => 'transparent',
+            'button_text_color'           => '#F4EFE6',
+            'button_background_color_hover' => '#F4EFE6',
+            'button_text_color_hover'     => '#0B1B3D',
+            'border_border'               => 'solid',
+            'border_width'                => ['unit' => 'px', 'top' => '2', 'right' => '2', 'bottom' => '2', 'left' => '2', 'isLinked' => true],
+            'border_color'                => '#F4EFE6',
+        ],
+    ];
+    return [
+        'id' => uid(), 'elType' => 'widget', 'widgetType' => 'button',
+        'settings' => array_merge([
+            'text'             => $text,
+            'link'             => ['url' => $url, 'is_external' => '', 'nofollow' => ''],
+            'align'            => 'left',
+            'border_radius'    => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '0', 'left' => '0', 'isLinked' => true],
+            'typography_typography'   => 'custom',
+            'typography_font_family'  => 'Archivo Black',
+            'typography_font_weight'  => '900',
+            'typography_font_size'    => ['unit' => 'px', 'size' => 14],
+            'typography_letter_spacing' => ['unit' => 'em', 'size' => .04],
+            'typography_text_transform' => 'uppercase',
+            'padding'          => ['unit' => 'px', 'top' => '14', 'right' => '22', 'bottom' => '14', 'left' => '22', 'isLinked' => false],
+        ], $styles[$style] ?? $styles['primary'], $extra_settings),
+        'elements' => [],
+    ];
+}
+
+// 2-column Elementor section.
+function el_2col(
+    array $left, array $right,
+    int   $left_pct = 50,
+    array $sec = [],
+    array $left_col = [],
+    array $right_col = []
+): array {
+    return [
+        'id' => uid(), 'elType' => 'section', 'isInner' => false,
+        'settings' => array_merge([
+            'stretch_section' => 'section-stretched',
+            'layout'          => 'full_width',
+            'gap'             => 'no',
+        ], $sec),
+        'elements' => [
+            [
+                'id' => uid(), 'elType' => 'column', 'isInner' => false,
+                'settings' => array_merge(['_column_size' => $left_pct], $left_col),
+                'elements' => $left,
+            ],
+            [
+                'id' => uid(), 'elType' => 'column', 'isInner' => false,
+                'settings' => array_merge(['_column_size' => 100 - $left_pct], $right_col),
+                'elements' => $right,
+            ],
+        ],
+    ];
+}
+
+// Set Elementor global container width so boxed sections center at 1320px.
+$kit = \Elementor\Plugin::$instance->kits_manager->get_active_kit_for_frontend();
+if ($kit) {
+    $kit->update_settings(['container_width' => ['unit' => 'px', 'size' => 1320]]);
+}
+
+// ── Shared assets ──────────────────────────────────────────
 $arrow = '<svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>';
 
-// ─────────────────────────────────────────────────────────
-//  BUILD PAGE
-// ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// BUILD PAGE
+// ═══════════════════════════════════════════════════════════
 $page = [];
 
-// ════════════════════════════════════════════════════════
-// 0 — NAV
-// ════════════════════════════════════════════════════════
+// ══ 0 — NAV ════════════════════════════════════════════════
 $page[] = el_wrap([w_html(
     '<header class="topbar" role="banner">' .
     '<div class="topbar-inner">' .
@@ -99,22 +216,14 @@ $page[] = el_wrap([w_html(
     '</header>'
 )]);
 
-// ════════════════════════════════════════════════════════
-// 1 — HERO
-// ════════════════════════════════════════════════════════
+// ══ 1 — HERO ═══════════════════════════════════════════════
 $ticker_chunk = '<span>Brigade de Sapeurs-Pompiers de Paris <span class="ticker-dot">●</span> Sport · Culture · Solidarité <span class="ticker-dot">●</span> Depuis 2018 <span class="ticker-dot">●</span></span>';
 $ticker_track = str_repeat($ticker_chunk, 8);
 
 $page[] = el_wrap([w_html(
     '<section class="hero" id="hero">' .
-
-    // Ticker
     '<div class="ticker ticker-top" aria-hidden="true"><div class="ticker-track">' . $ticker_track . '</div></div>' .
-
-    // Hero inner
     '<div class="hero-inner">' .
-
-    // Left
     '<div class="hero-left">' .
     '<div class="kicker"><span class="kicker-dot" style="background:var(--accent)"></span><span>Le collectif · Depuis 2018</span></div>' .
     '<h1 class="hero-title">' .
@@ -132,9 +241,7 @@ $page[] = el_wrap([w_html(
     '<div class="hero-meta-chip"><span class="hero-meta-sq hero-meta-sq-r"></span> Sport · Culture · Solidarité</div>' .
     '<div class="hero-meta-chip"><span class="hero-meta-sq hero-meta-sq-b"></span> Depuis 2018</div>' .
     '</div>' .
-    '</div>' . // .hero-left
-
-    // Right
+    '</div>' .
     '<div class="hero-right">' .
     '<div class="hero-photo-frame">' .
     '<div class="hero-photo-tag">PORTRAIT · TIM</div>' .
@@ -146,24 +253,18 @@ $page[] = el_wrap([w_html(
     '<div class="hero-meta-stripe hero-meta-stripe-r"></div>' .
     '<div class="hero-meta-stripe"></div>' .
     '</div>' .
-    '</div>' . // .hero-right
-
-    '</div>' . // .hero-inner
-
-    // Stats strip
+    '</div>' .
+    '</div>' .
     '<div class="stats-strip" aria-label="Chiffres clés">' .
     '<div class="stat"><div class="stat-n">4</div><div class="stat-l">Défis organisés</div></div>' .
     '<div class="stat"><div class="stat-n">120+</div><div class="stat-l">Frères d\'armes mobilisés</div></div>' .
     '<div class="stat"><div class="stat-n">38 K€</div><div class="stat-l">Collectés à ce jour</div></div>' .
     '<div class="stat"><div class="stat-n">29.03.26</div><div class="stat-l">Prochain défi · Kourou</div></div>' .
     '</div>' .
-
     '</section>'
 )]);
 
-// ════════════════════════════════════════════════════════
-// 2 — STORY
-// ════════════════════════════════════════════════════════
+// ══ 2 — STORY  (native widgets — visually editable) ════════
 $timeline_rows =
     '<div class="timeline-row"><div class="timeline-y">2012</div><div class="timeline-bar" aria-hidden="true"></div><div class="timeline-e">Incorpore la BSPP, 11e compagnie d\'incendie, Marais.</div></div>' .
     '<div class="timeline-row"><div class="timeline-y">2015</div><div class="timeline-bar" aria-hidden="true"></div><div class="timeline-e">Rejoint le groupe de gymnastique de la Brigade.</div></div>' .
@@ -172,68 +273,84 @@ $timeline_rows =
     '<div class="timeline-row"><div class="timeline-y">2025</div><div class="timeline-bar" aria-hidden="true"></div><div class="timeline-e">Course au profit du Bleuet de France.</div></div>' .
     '<div class="timeline-row"><div class="timeline-y">2026</div><div class="timeline-bar" aria-hidden="true"></div><div class="timeline-e">Marathon de l\'Espace, Kourou. En relais autour de Tim.</div></div>';
 
-$page[] = el_wrap([w_html(
-    '<section class="section section-cream" id="story">' .
-    '<div class="section-inner story-grid">' .
-
-    // Media
+$story_media_html =
     '<div class="story-media">' .
     '<div class="story-photo"><div class="story-photo-placeholder"></div></div>' .
     '<div class="story-photo-sub"><div class="story-photo-placeholder"></div></div>' .
     '<div class="story-stamp">BSPP · 2012—2018</div>' .
-    '</div>' .
+    '</div>';
 
-    // Copy
-    '<div class="story-copy">' .
-    '<div class="kicker"><span class="kicker-dot" style="background:var(--accent)"></span><span>L\'Histoire</span></div>' .
-    '<h2 class="section-title">Un caporal. Une équipe de gym. Un fil qui ne casse pas.</h2>' .
-    '<p class="lede">Septembre 2012. Timothé Bernardeau, jeune Nantais, incorpore la Brigade de Sapeurs-Pompiers de Paris. Il rejoint la 11e compagnie d\'incendie et de secours, dans le Marais, comme conducteur d\'engin-pompe. De nombreuses interventions d\'ampleur, dont les attentats de janvier et novembre 2015. Plusieurs lettres de félicitations du commandement.</p>' .
-    '<p class="lede">Avril 2015 : Tim, sportif d\'exception, intègre le groupe de gymnastique de la Brigade — fondé en 1919, ambassadeur sportif et artistique de la BSPP. En trois ans, plus de 40 représentations en France et en Europe.</p>' .
-    '<p class="lede">Mai 2018. Lors d\'une représentation au profit d\'enfants malades, Tim chute lourdement. Tétraplégie. Près de deux ans et demi à l\'Institution Nationale des Invalides, puis le retour à la maison, avec sa compagne infirmière et leur fille Lyla. À 33 ans, sa résilience est sans faille. Le lien avec la caserne, lui non plus, n\'a jamais cassé.</p>' .
-    '<div class="timeline" aria-label="Chronologie">' . $timeline_rows . '</div>' .
-    '<blockquote class="pull-quote">' .
-    '<div class="pull-quote-mark" aria-hidden="true">"</div>' .
-    '<div class="pull-quote-text">« La cohésion et la fraternité de la BSPP sont sans limite. Sept ans après son accident, on franchit la ligne avec lui. »</div>' .
-    '<div class="pull-quote-who">— Le collectif Un Défi pour Tim</div>' .
-    '</blockquote>' .
-    '<a href="#defis" class="btn btn-outline">Voir le défi en détail ' . $arrow . '</a>' .
-    '</div>' . // .story-copy
+$page[] = el_2col(
+    // Left — photos (HTML, becomes image widget when photos are ready)
+    [w_html($story_media_html)],
+    // Right — editable text content
+    [
+        w_html('<div class="kicker"><span class="kicker-dot" style="background:var(--accent)"></span><span>L\'Histoire</span></div>'),
+        w_heading(
+            'Un caporal. Une équipe de gym. Un fil qui ne casse pas.',
+            'h2',
+            ['_margin' => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '28', 'left' => '0', 'isLinked' => false]]
+        ),
+        w_text('<p>Septembre 2012. Timothé Bernardeau, jeune Nantais, incorpore la Brigade de Sapeurs-Pompiers de Paris. Il rejoint la 11e compagnie d\'incendie et de secours, dans le Marais, comme conducteur d\'engin-pompe. De nombreuses interventions d\'ampleur, dont les attentats de janvier et novembre 2015. Plusieurs lettres de félicitations du commandement.</p>',
+            ['_margin' => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '14', 'left' => '0', 'isLinked' => false]]),
+        w_text('<p>Avril 2015 : Tim, sportif d\'exception, intègre le groupe de gymnastique de la Brigade — fondé en 1919, ambassadeur sportif et artistique de la BSPP. En trois ans, plus de 40 représentations en France et en Europe.</p>',
+            ['_margin' => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '14', 'left' => '0', 'isLinked' => false]]),
+        w_text('<p>Mai 2018. Lors d\'une représentation au profit d\'enfants malades, Tim chute lourdement. Tétraplégie. Près de deux ans et demi à l\'Institution Nationale des Invalides, puis le retour à la maison, avec sa compagne infirmière et leur fille Lyla. À 33 ans, sa résilience est sans faille. Le lien avec la caserne, lui non plus, n\'a jamais cassé.</p>',
+            ['_margin' => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '24', 'left' => '0', 'isLinked' => false]]),
+        w_html('<div class="timeline" aria-label="Chronologie">' . $timeline_rows . '</div>'),
+        w_html(
+            '<blockquote class="pull-quote">' .
+            '<div class="pull-quote-mark" aria-hidden="true">"</div>' .
+            '<div class="pull-quote-text">« La cohésion et la fraternité de la BSPP sont sans limite. Sept ans après son accident, on franchit la ligne avec lui. »</div>' .
+            '<div class="pull-quote-who">— Le collectif Un Défi pour Tim</div>' .
+            '</blockquote>'
+        ),
+        w_btn('Voir le défi en détail', '#defis', 'outline'),
+    ],
+    47,
+    // Section settings
+    [
+        '_element_id'           => 'story',
+        'background_background' => 'classic',
+        'background_color'      => '#F4EFE6',
+        'padding' => ['unit' => 'px', 'top' => '100', 'right' => '32', 'bottom' => '100', 'left' => '32', 'isLinked' => false],
+        'padding_tablet' => ['unit' => 'px', 'top' => '70', 'right' => '24', 'bottom' => '70', 'left' => '24', 'isLinked' => false],
+    ],
+    // Left column settings
+    ['padding' => ['unit' => 'px', 'top' => '0', 'right' => '40', 'bottom' => '0', 'left' => '0', 'isLinked' => false]],
+    // Right column settings
+    ['padding' => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '0', 'left' => '20', 'isLinked' => false]]
+);
 
-    '</div>' . // .story-grid
-    '</section>'
-)]);
-
-// ════════════════════════════════════════════════════════
-// 3 — DÉFIS (dynamic — managed via WP admin → Les Défis)
-// ════════════════════════════════════════════════════════
+// ══ 3 — DÉFIS (shortcode — managed via WP admin) ═══════════
 $page[] = el_wrap([w_sc('[defitim_defis]')]);
 
-// ════════════════════════════════════════════════════════
-// 4 — MEMBERS
-// ════════════════════════════════════════════════════════
+// ══ 4 — MEMBERS  (native heading/text + HTML grid) ═════════
 $team_cards =
     '<div class="team-card"><div class="team-n">12</div><div class="team-label">Sapeurs-pompiers de Paris</div><div class="team-note">Dont 6 membres de l\'équipe de gymnastique de la Brigade.</div></div>' .
     '<div class="team-card"><div class="team-n">6</div><div class="team-label">Anciens sapeurs-pompiers</div><div class="team-note">Frères d\'armes, toujours là.</div></div>' .
     '<div class="team-card"><div class="team-n">5</div><div class="team-label">Famille Bernardeau</div><div class="team-note">Compagne, parents, proches.</div></div>' .
     '<div class="team-card"><div class="team-n">3</div><div class="team-label">Enfants</div><div class="team-note">Lyla et deux camarades.</div></div>';
 
-$page[] = el_wrap([w_html(
-    '<section class="section section-cream" id="members">' .
-    '<div class="section-inner">' .
-    '<div class="team-head">' .
-    '<div class="kicker"><span class="kicker-dot" style="background:var(--accent)"></span><span>Membres de l\'asso</span></div>' .
-    '<h2 class="section-title">Qui compose le collectif.</h2>' .
-    '<p class="lede">Un collectif qui mélange les générations et les uniformes. Les frères d\'armes de Tim, les anciens, sa famille, et les enfants qui grandissent dans cette histoire — dont Lyla, la sienne.</p>' .
-    '</div>' .
-    '<div class="team-grid">' . $team_cards . '</div>' .
-    '<div class="members-bureau">Bureau de l\'association : Adj-Chef Benjamin GUY (président) · Timothé Bernardeau (coordinateur) · membres fondateurs au sein de la BSPP.</div>' .
-    '</div>' .
-    '</section>'
-)]);
+$page[] = el_wrap(
+    [
+        w_html('<div class="kicker"><span class="kicker-dot" style="background:var(--accent)"></span><span>Membres de l\'asso</span></div>'),
+        w_heading('Qui compose le collectif.'),
+        w_text('<p>Un collectif qui mélange les générations et les uniformes. Les frères d\'armes de Tim, les anciens, sa famille, et les enfants qui grandissent dans cette histoire — dont Lyla, la sienne.</p>',
+            ['_margin' => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '48', 'left' => '0', 'isLinked' => false]]),
+        w_html('<div class="team-grid">' . $team_cards . '</div>'),
+        w_html('<div class="members-bureau">Bureau de l\'association : Adj-Chef Benjamin GUY (président) · Timothé Bernardeau (coordinateur) · membres fondateurs au sein de la BSPP.</div>'),
+    ],
+    [
+        '_element_id'           => 'members',
+        'background_background' => 'classic',
+        'background_color'      => '#F4EFE6',
+        'padding' => ['unit' => 'px', 'top' => '100', 'right' => '32', 'bottom' => '100', 'left' => '32', 'isLinked' => false],
+        'padding_tablet' => ['unit' => 'px', 'top' => '70', 'right' => '24', 'bottom' => '70', 'left' => '24', 'isLinked' => false],
+    ]
+);
 
-// ════════════════════════════════════════════════════════
-// 5 — MÉCENAT
-// ════════════════════════════════════════════════════════
+// ══ 5 — MÉCÉNAT  (native intro + HTML benefits/budget) ═════
 $mec_benefits =
     '<div class="mec-benefit"><div class="mec-benefit-n">01</div><div class="mec-benefit-t">Banderole mécènes</div><div class="mec-benefit-b">Réalisée pour le défi, portée pendant tout le séjour à Kourou.</div></div>' .
     '<div class="mec-benefit"><div class="mec-benefit-n">02</div><div class="mec-benefit-t">Tenues officielles</div><div class="mec-benefit-b">Logos sur les tenues « Un Défi pour Tim » portées pendant 6 jours.</div></div>' .
@@ -254,51 +371,84 @@ $budget_rows =
     '<div class="budget-row"><div class="budget-k">Apport de la section</div><div class="budget-n"></div><div class="budget-v">− 10 000 €</div></div>' .
     '<div class="budget-row budget-row-need"><div class="budget-k">Besoin de financement</div><div class="budget-n"></div><div class="budget-v">42 780 €</div></div>';
 
-$page[] = el_wrap([w_html(
-    '<section class="section section-cream" id="mecenat">' .
-    '<div class="section-inner">' .
-    '<div class="mec-head">' .
-    '<div class="kicker"><span class="kicker-dot" style="background:var(--accent)"></span><span>Mécénat</span></div>' .
-    '<h2 class="section-title">Soutenir, et être visible.</h2>' .
-    '<p class="lede">Vos couleurs sur la banderole, sur les tenues du défi, dans nos communications avant-pendant-après. Une démonstration de la gymnastique de la BSPP, des publications réseaux sur toutes nos plateformes — votre image associée à un projet qui rassemble.</p>' .
-    '</div>' .
-    '<div class="mec-benefits">' . $mec_benefits . '</div>' .
-    '<div class="budget">' .
-    '<div class="budget-head">' .
-    '<h3 class="budget-title">Le budget, ligne à ligne</h3>' .
-    '<p class="budget-sub">Total : 52 780 € — 10 000 € apportés par la section « Un Défi pour Tim » — il reste 42 780 € à collecter.</p>' .
-    '</div>' .
-    '<div class="budget-table">' . $budget_rows . '</div>' .
-    '</div>' .
-    '</div>' .
-    '</section>'
-)]);
+$page[] = el_wrap(
+    [
+        w_html('<div class="kicker"><span class="kicker-dot" style="background:var(--accent)"></span><span>Mécénat</span></div>'),
+        w_heading('Soutenir, et être visible.'),
+        w_text('<p>Vos couleurs sur la banderole, sur les tenues du défi, dans nos communications avant-pendant-après. Une démonstration de la gymnastique de la BSPP, des publications réseaux sur toutes nos plateformes — votre image associée à un projet qui rassemble.</p>',
+            ['_margin' => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '48', 'left' => '0', 'isLinked' => false]]),
+        w_html('<div class="mec-benefits">' . $mec_benefits . '</div>'),
+        w_html(
+            '<div class="budget">' .
+            '<div class="budget-head">' .
+            '<h3 class="budget-title">Le budget, ligne à ligne</h3>' .
+            '<p class="budget-sub">Total : 52 780 € — 10 000 € apportés par la section « Un Défi pour Tim » — il reste 42 780 € à collecter.</p>' .
+            '</div>' .
+            '<div class="budget-table">' . $budget_rows . '</div>' .
+            '</div>'
+        ),
+    ],
+    [
+        '_element_id'           => 'mecenat',
+        'background_background' => 'classic',
+        'background_color'      => '#F4EFE6',
+        'padding' => ['unit' => 'px', 'top' => '100', 'right' => '32', 'bottom' => '100', 'left' => '32', 'isLinked' => false],
+        'padding_tablet' => ['unit' => 'px', 'top' => '70', 'right' => '24', 'bottom' => '70', 'left' => '24', 'isLinked' => false],
+    ]
+);
 
-// ════════════════════════════════════════════════════════
-// 6 — SENS
-// ════════════════════════════════════════════════════════
-$sens_points =
-    '<div class="sens-point"><div class="sens-n">01</div><div class="sens-t">Kourou</div><div class="sens-b">Un des détachements de la Brigade de Sapeurs-Pompiers de Paris.</div></div>' .
-    '<div class="sens-point"><div class="sens-n">02</div><div class="sens-t">Un marathon</div><div class="sens-b">Un défi sportif qui démontrera la condition physique des SPP.</div></div>' .
-    '<div class="sens-point"><div class="sens-n">03</div><div class="sens-t">Un relais</div><div class="sens-b">20 sapeurs-pompiers se relaient pour franchir la ligne avec Tim.</div></div>' .
-    '<div class="sens-point"><div class="sens-n">04</div><div class="sens-t">Sept ans après</div><div class="sens-b">La preuve, encore et toujours, que la cohésion et la fraternité de la BSPP sont sans limite.</div></div>';
+// ══ 6 — SENS  (native widgets — navy section) ══════════════
+$page[] = el_wrap(
+    [
+        w_html('<div class="kicker"><span class="kicker-dot" style="background:var(--brass)"></span><span>Un projet qui a du sens</span></div>'),
+        w_heading(
+            'Pourquoi celui-ci, pourquoi maintenant.',
+            'h2',
+            [
+                'title_color' => '#F4EFE6',
+                '_margin' => ['unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '48', 'left' => '0', 'isLinked' => false],
+            ]
+        ),
+        w_html('<div class="sens-grid">
+            <div class="sens-point">
+                <div class="sens-n">01</div>
+                <div class="sens-t">Kourou</div>
+                <div class="sens-b">Un des détachements de la Brigade de Sapeurs-Pompiers de Paris.</div>
+            </div>
+            <div class="sens-point">
+                <div class="sens-n">02</div>
+                <div class="sens-t">Un marathon</div>
+                <div class="sens-b">Un défi sportif qui démontrera la condition physique des SPP.</div>
+            </div>
+            <div class="sens-point">
+                <div class="sens-n">03</div>
+                <div class="sens-t">Un relais</div>
+                <div class="sens-b">20 sapeurs-pompiers se relaient pour franchir la ligne avec Tim.</div>
+            </div>
+            <div class="sens-point">
+                <div class="sens-n">04</div>
+                <div class="sens-t">Sept ans après</div>
+                <div class="sens-b">La preuve, encore et toujours, que la cohésion et la fraternité de la BSPP sont sans limite.</div>
+            </div>
+        </div>'),
+        w_text(
+            '<p>Avant son accident, Tim avait couru le Marathon de New York. Le Marathon de l\'Espace, en relais, dira la même chose autrement : tout est encore possible.</p>',
+            [
+                'text_color' => 'rgba(244,239,230,0.82)',
+                '_margin' => ['unit' => 'px', 'top' => '40', 'right' => '0', 'bottom' => '0', 'left' => '0', 'isLinked' => false],
+            ]
+        ),
+    ],
+    [
+        'css_classes'           => 'section-navy section-sens',
+        'background_background' => 'classic',
+        'background_color'      => '#0B1B3D',
+        'padding' => ['unit' => 'px', 'top' => '100', 'right' => '32', 'bottom' => '100', 'left' => '32', 'isLinked' => false],
+        'padding_tablet' => ['unit' => 'px', 'top' => '70', 'right' => '24', 'bottom' => '70', 'left' => '24', 'isLinked' => false],
+    ]
+);
 
-$page[] = el_wrap([w_html(
-    '<section class="section section-navy section-sens">' .
-    '<div class="section-inner">' .
-    '<div class="sens-head">' .
-    '<div class="kicker"><span class="kicker-dot" style="background:var(--brass)"></span><span>Un projet qui a du sens</span></div>' .
-    '<h2 class="section-title section-title-light">Pourquoi celui-ci, pourquoi maintenant.</h2>' .
-    '</div>' .
-    '<div class="sens-grid">' . $sens_points . '</div>' .
-    '<p class="sens-ny">Avant son accident, Tim avait couru le Marathon de New York. Le Marathon de l\'Espace, en relais, dira la même chose autrement : tout est encore possible.</p>' .
-    '</div>' .
-    '</section>'
-)]);
-
-// ════════════════════════════════════════════════════════
-// 7 — HELP / DONATE
-// ════════════════════════════════════════════════════════
+// ══ 7 — HELP / DONATE ══════════════════════════════════════
 $page[] = el_wrap([w_html(
     '<section class="section section-cream" id="help">' .
     '<div class="section-inner">' .
@@ -307,8 +457,6 @@ $page[] = el_wrap([w_html(
     '<h2 class="section-title">Trois façons d\'agir.</h2>' .
     '</div>' .
     '<div class="help-grid">' .
-
-    // Donate box
     '<div class="help-donate">' .
     '<div class="help-donate-top"><div class="help-donate-num">01</div><h3 class="help-donate-title">Donner</h3></div>' .
     '<p class="help-donate-body">Don en chèque à l\'ordre de « ASASPP » — adressé à la BSPP, Caserne Masséna, 3 rue Darmesteter, 75013 Paris. Ou donnez en ligne via HelloAsso.</p>' .
@@ -324,9 +472,7 @@ $page[] = el_wrap([w_html(
     '<div class="help-donate-sub">Don à l\'ordre de « ASASPP ». Reçu fiscal pour les dons éligibles.</div>' .
     '<button class="btn btn-primary btn-lg help-donate-go" id="donate-btn" type="button">Préparer mon don · <span id="donate-amount">€50</span> ' . $arrow . '</button>' .
     '</div>' .
-    '</div>' . // .help-donate
-
-    // Side cards
+    '</div>' .
     '<div class="help-side">' .
     '<div class="help-card">' .
     '<div class="help-card-num">02</div>' .
@@ -340,33 +486,22 @@ $page[] = el_wrap([w_html(
     '<p class="help-card-body">Suivez et relayez nos publications avant, pendant et après le séjour. Chaque partage compte autant qu\'un don.</p>' .
     '<button class="help-card-cta" type="button" id="share-btn">Partager la page ' . $arrow . '</button>' .
     '</div>' .
-    '</div>' . // .help-side
-
-    '</div>' . // .help-grid
-    '</div>' . // .section-inner
+    '</div>' .
+    '</div>' .
+    '</div>' .
     '</section>'
 )]);
 
-// ════════════════════════════════════════════════════════
-// 8 — PROGRESS (dynamic — update via WP admin → Défi Tim → Collecte & FAQ)
-// ════════════════════════════════════════════════════════
+// ══ 8 — PROGRESS (shortcode) ═══════════════════════════════
 $page[] = el_wrap([w_sc('[defitim_progress]')]);
 
-// ════════════════════════════════════════════════════════
-// 9 — SPONSORS (dynamic — update via WP admin → Défi Tim → Contact & Partenaires)
-// ════════════════════════════════════════════════════════
+// ══ 9 — SPONSORS (shortcode) ═══════════════════════════════
 $page[] = el_wrap([w_sc('[defitim_sponsors]')]);
 
-// ════════════════════════════════════════════════════════
-// 10 — FAQ (dynamic — update via WP admin → Défi Tim → Collecte & FAQ)
-// ════════════════════════════════════════════════════════
+// ══ 10 — FAQ (shortcode) ════════════════════════════════════
 $page[] = el_wrap([w_sc('[defitim_faq]')]);
 
-// ════════════════════════════════════════════════════════
-// 11 — CONTACT
-// Contact form: nonce comes from window.defitim.nonce (wp_localize_script),
-// not from a PHP form field — static HTML is safe.
-// ════════════════════════════════════════════════════════
+// ══ 11 — CONTACT ════════════════════════════════════════════
 $contact_cards =
     '<div class="contact-card">' .
     '<div class="contact-card-role">Responsable projet</div>' .
@@ -384,8 +519,6 @@ $contact_cards =
 $page[] = el_wrap([w_html(
     '<section class="section section-navy section-contact" id="contact">' .
     '<div class="section-inner contact-grid">' .
-
-    // Left
     '<div class="contact-left">' .
     '<div class="kicker"><span class="kicker-dot" style="background:var(--brass)"></span><span>Contact</span></div>' .
     '<h2 class="section-title section-title-light">On vous répond.</h2>' .
@@ -404,9 +537,7 @@ $page[] = el_wrap([w_html(
     '<a href="https://www.pompiersparis.fr" rel="noopener noreferrer" target="_blank" aria-label="Site BSPP">BSPP</a>' .
     '</div>' .
     '</div>' .
-    '</div>' . // .contact-left
-
-    // Form
+    '</div>' .
     '<form class="contact-form" id="contact-form" novalidate>' .
     '<div class="cf-row">' .
     '<label><span>Nom</span><input type="text" name="nom" required placeholder="Votre nom"></label>' .
@@ -417,14 +548,11 @@ $page[] = el_wrap([w_html(
     '<div class="cf-feedback" role="alert" aria-live="polite" hidden></div>' .
     '<button class="btn btn-primary btn-lg" type="submit">Envoyer ' . $arrow . '</button>' .
     '</form>' .
-
-    '</div>' . // .contact-grid
+    '</div>' .
     '</section>'
 )]);
 
-// ════════════════════════════════════════════════════════
-// 12 — FOOTER
-// ════════════════════════════════════════════════════════
+// ══ 12 — FOOTER ════════════════════════════════════════════
 $page[] = el_wrap([w_html(
     '<footer class="footer">' .
     '<div class="footer-inner">' .
@@ -449,15 +577,11 @@ if (!$front_page_id) {
 }
 
 $json = wp_json_encode($page);
-
-// wp_unslash() strips backslashes when storing meta (WordPress assumes pre-slashed form data).
-// wp_slash() pre-doubles them so the JSON's \" and \u sequences survive intact.
 update_post_meta($front_page_id, '_elementor_data',          wp_slash($json));
 update_post_meta($front_page_id, '_elementor_edit_mode',     'builder');
 update_post_meta($front_page_id, '_elementor_template_type', 'wp-page');
 update_post_meta($front_page_id, '_wp_page_template',        'elementor_canvas');
 
-// Delete only the front-page CSS — never clear_cache() globally (crashes Kit CSS regeneration).
 if (class_exists('\Elementor\Core\Files\CSS\Post')) {
     (new \Elementor\Core\Files\CSS\Post($front_page_id))->delete();
 }
